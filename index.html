@@ -73,6 +73,47 @@ function parseCSVToData(csvText){
 }
 function dataToCSV(data){return Papa.unparse(data.map(d=>{const row={Organisation:d.name,Sector:SECT_LABELS[d.sector]||d.sector,Remit:d.remit,Location:d.location};SC.forEach(s=>{row[s]=d.supplyChain.includes(s)?"x":"";});MATS.forEach(m=>{row[m]=d.materials.includes(m)?"x":"";});return row;}),{columns:CSV_HEADERS});}
 function genTemplate(){return Papa.unparse([{Organisation:"Example Corp",Sector:"Industry",Remit:"SiC power modules",Location:"UK",Equipment:"","Substrate":"",Epiwafer:"","Device design":"x",Manufacturing:"x",Packaging:"x","End user":"",SiC:"x",GaN:"",Ga2O3:"",other:""}],{columns:CSV_HEADERS});}
+/* ── Change ②: "Ecosystem at a Glance" computed from the loaded dataset ──
+   Runs on the full dataset (not the filtered view), so cards update when a new
+   CSV is uploaded but stay fixed while the user is filtering. */
+const plural=(n,one,many)=>n===1?one:(many||one+"s");
+const joinList=arr=>arr.length<=1?arr.join(""):arr.slice(0,-1).join(", ")+" and "+arr[arr.length-1];
+function computeInsights(data){
+  const total=data.length;
+  const stageCount=s=>data.filter(d=>d.supplyChain.includes(s)).length;
+  const stages=SC.map(s=>({stage:s,count:stageCount(s)}));
+  /* Card 1 — End-user demand */
+  const eu=stages.find(x=>x.stage==="End user").count;
+  const euBy=SECTS.map(s=>({sector:s,count:data.filter(d=>d.sector===s&&d.supplyChain.includes("End user")).length})).filter(x=>x.count>0);
+  const maxStage=Math.max(...stages.map(x=>x.count),0);
+  const euDesc=eu===0?"No organisations are recorded at the End user stage in the current dataset.":
+    `${eu} ${plural(eu,"organisation")} sit at the End user stage${eu===maxStage?", the most populated stage in the chain":""}`+
+    (euBy.length>0?` (${joinList(euBy.map(x=>x.count+" "+SECT_LABELS[x.sector].toLowerCase()))}).`:".");
+  /* Card 2 — Thinnest stage(s) */
+  const minCount=Math.min(...stages.map(x=>x.count));
+  const thin=stages.filter(x=>x.count===minCount).map(x=>x.stage);
+  const rest=stages.filter(x=>x.count>minCount);
+  const nextCount=rest.length?Math.min(...rest.map(x=>x.count)):null;
+  const next=rest.filter(x=>x.count===nextCount).map(x=>x.stage);
+  const ukThin=data.filter(d=>d.location==="UK"&&thin.some(s=>d.supplyChain.includes(s))).length;
+  const thinDesc=total===0?"No data loaded.":
+    `${joinList(thin)} ${thin.length>1?"have":"has"} the fewest players (${minCount})`+
+    (next.length?`, followed by ${joinList(next)} (${nextCount}).`:".")+
+    (minCount>0?` ${ukThin===0?"None":"Only "+ukThin} of ${thin.length>1?"these":"them"} ${ukThin===1?"is":"are"} UK-based.`:"");
+  /* Card 3 — Academic coverage */
+  const aca=data.filter(d=>d.sector==="Academic");
+  const acaStages=SC.map(s=>({stage:s,count:aca.filter(d=>d.supplyChain.includes(s)).length}));
+  const covered=acaStages.filter(x=>x.count>0).length;
+  const top=[...acaStages].filter(x=>x.count>0).sort((a,b)=>b.count-a.count).slice(0,2);
+  const acaDesc=aca.length===0?"No academic organisations in the current dataset.":
+    `${aca.length} academic ${plural(aca.length,"group")} cover ${covered===SC.length?"the full chain":covered+" of "+SC.length+" stages"}`+
+    (top.length?`, strongest at ${joinList(top.map(x=>x.stage+" ("+x.count+")"))}.`:".");
+  return[
+    {icon:"🏭",title:"End-User Pull",desc:euDesc,color:C.teal},
+    {icon:"⚠️",title:thin.length>1?"Thinnest Stages":"Thinnest Stage: "+thin[0],desc:thinDesc,color:C.red},
+    {icon:"🎓",title:"Academic Depth",desc:acaDesc,color:C.Academic},
+  ];
+}
 function dlFile(content,filename){const b=new Blob([content],{type:"text/csv"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);}
 
 /* ── Pure CSS Chart Components ── */
@@ -170,6 +211,7 @@ function App(){
     ]
   })),[filtered]);
 
+  const insights=useMemo(()=>computeInsights(DATA),[DATA]);
   const matBar=useMemo(()=>MATS.map(m=>({name:MS[m],full:ML[m],count:filtered.filter(d=>d.materials.includes(m)).length,fill:C[m]})),[filtered]);
   const hasF=sectF||matF||scF||search;
   const clearF=()=>{setSectF(null);setMatF(null);setScF(null);setSearch("");};
@@ -228,9 +270,9 @@ function App(){
         </Card>
       </div>
       <Card>
-        <STitle>Ecosystem at a Glance</STitle>
+        <STitle sub="Computed from the loaded dataset; updates when new data is uploaded">Ecosystem at a Glance</STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14}}>
-          {[{icon:"🏭",title:"Strong End-User Pull",desc:"30+ organisations in automotive, aerospace, defence, and grid drive demand for WBG devices.",color:C.teal},{icon:"⚠️",title:"Upstream Bottleneck",desc:"Substrate and Epiwafer stages have fewest players. UK lacks domestic SiC substrate production.",color:C.red},{icon:"🎓",title:"Academic Depth",desc:"28 university groups span the full chain, with strength in device design and manufacturing.",color:C.Academic}].map((c,i)=>(
+          {insights.map((c,i)=>(
             <div key={i} style={{padding:"16px 18px",background:c.color+"08",borderRadius:10,borderLeft:`3px solid ${c.color}`}}>
               <div style={{fontSize:20,marginBottom:6}}>{c.icon}</div>
               <div style={{fontSize:13,fontWeight:700,color:C.tx,marginBottom:4}}>{c.title}</div>
