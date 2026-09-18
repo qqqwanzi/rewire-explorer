@@ -108,44 +108,48 @@ function computeInsights(data){
   const acaDesc=aca.length===0?"No academic organisations in the current dataset.":
     `${aca.length} academic ${plural(aca.length,"group")} cover ${covered===SC.length?"the full chain":covered+" of "+SC.length+" stages"}`+
     (top.length?`, strongest at ${joinList(top.map(x=>x.stage+" ("+x.count+")"))}.`:".");
+  /* Each card carries a membership predicate and a label so the Overview can open the organisation pop-up (change 6) */
   return[
-    {icon:"🏭",title:"End-User Pull",desc:euDesc,color:C.teal},
-    {icon:"⚠️",title:thin.length>1?"Thinnest Stages":"Thinnest Stage: "+thin[0],desc:thinDesc,color:C.red},
-    {icon:"🎓",title:"Academic Depth",desc:acaDesc,color:C.Academic},
+    {icon:"🏭",title:"End-User Pull",desc:euDesc,color:C.teal,match:d=>d.supplyChain.includes("End user"),label:"End user stage",what:"is active at the End user stage"},
+    {icon:"⚠️",title:thin.length>1?"Thinnest Stages":"Thinnest Stage: "+thin[0],desc:thinDesc,color:C.red,match:d=>thin.some(s=>d.supplyChain.includes(s)),label:joinList(thin)+(thin.length>1?" stages":" stage"),what:"is active at "+joinList(thin)},
+    {icon:"🎓",title:"Academic Depth",desc:acaDesc,color:C.Academic,match:d=>d.sector==="Academic",label:"Academic organisations",what:"is an academic organisation"},
   ];
 }
 function dlFile(content,filename){const b=new Blob([content],{type:"text/csv"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);}
 
 /* ── Pure CSS Chart Components ── */
-function StackedBar({data,colors,maxVal}){
+function StackedBar({data,colors,maxVal,segLabels,onSeg,onRow}){
   const mx=maxVal||Math.max(...data.map(d=>d.values.reduce((a,b)=>a+b,0)),1);
+  const hover=on=>ev=>{ev.currentTarget.style.filter=on?"brightness(1.12)":"none";ev.currentTarget.style.boxShadow=on?`inset 0 0 0 2px rgba(255,255,255,0.7)`:"none";};
   return(
     <div style={{display:"flex",flexDirection:"column",gap:6}}>
       {data.map((d,i)=>{
         const total=d.values.reduce((a,b)=>a+b,0);
+        const rowClick=onRow?()=>onRow(i):undefined;
         return(
           <div key={i} style={{display:"flex",alignItems:"center",gap:10}}>
-            <div style={{width:100,fontSize:11,color:C.ts,textAlign:"right",fontWeight:600,flexShrink:0}}>{d.label}</div>
+            <div onClick={rowClick} title={onRow?`${d.label}: click to list all organisations at this stage`:undefined} style={{width:100,fontSize:11,color:C.ts,textAlign:"right",fontWeight:600,flexShrink:0,cursor:onRow?"pointer":"default"}}>{d.label}</div>
             <div style={{flex:1,height:28,background:C.bg,borderRadius:5,overflow:"hidden",display:"flex",border:`1px solid ${C.bl}`}}>
               {d.values.map((v,j)=>{
                 if(v===0)return null;
                 const w=(v/mx)*100;
-                return <div key={j} style={{width:w+"%",height:"100%",background:colors[j],display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff",fontWeight:700,minWidth:v>0?16:0}}>{v>1?v:""}</div>;
+                const segClick=onSeg?()=>onSeg(i,j):undefined;
+                return <div key={j} onClick={segClick} title={onSeg?`${d.label} x ${segLabels?segLabels[j]:""}: ${v}, click to list`:undefined} onMouseEnter={onSeg?hover(true):undefined} onMouseLeave={onSeg?hover(false):undefined} style={{width:w+"%",height:"100%",background:colors[j],display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff",fontWeight:700,minWidth:v>0?16:0,cursor:onSeg?"pointer":"default",transition:"filter 0.15s"}}>{v>1?v:""}</div>;
               })}
             </div>
-            <div style={{width:30,fontSize:12,fontWeight:700,color:C.tx,fontFamily:mn,textAlign:"right"}}>{total}</div>
+            <div onClick={rowClick} title={onRow?`${d.label}: click to list all organisations at this stage`:undefined} style={{width:30,fontSize:12,fontWeight:700,color:C.tx,fontFamily:mn,textAlign:"right",cursor:onRow?"pointer":"default"}}>{total}</div>
           </div>
         );
       })}
     </div>
   );
 }
-function HBar({data,maxVal,color=C.teal}){
+function HBar({data,maxVal,color=C.teal,onClick}){
   const mx=maxVal||Math.max(...data.map(d=>d.value),1);
   return(
     <div style={{display:"flex",flexDirection:"column",gap:4}}>
       {data.map((d,i)=>(
-        <div key={i} style={{display:"flex",alignItems:"center",gap:10}}>
+        <div key={i} onClick={onClick?()=>onClick(i):undefined} title={onClick?`${d.label}: ${d.value}, click to list organisations`:undefined} style={{display:"flex",alignItems:"center",gap:10,cursor:onClick?"pointer":"default",borderRadius:6,padding:"1px 2px"}} onMouseEnter={onClick?ev=>{ev.currentTarget.style.background=C.tg;}:undefined} onMouseLeave={onClick?ev=>{ev.currentTarget.style.background="transparent";}:undefined}>
           <div style={{width:80,fontSize:11,color:C.ts,textAlign:"right",fontWeight:500,flexShrink:0}}>{d.label}</div>
           <div style={{flex:1,height:22,background:C.bg,borderRadius:4,overflow:"hidden",border:`1px solid ${C.bl}`}}>
             <div style={{width:Math.max((d.value/mx)*100,2)+"%",height:"100%",background:d.color||color,borderRadius:3,display:"flex",alignItems:"center",paddingLeft:6,transition:"width 0.4s"}}>
@@ -160,7 +164,10 @@ function HBar({data,maxVal,color=C.teal}){
 function Chip({children,color=C.teal,filled=false,onClick,sm=false}){
   return <span onClick={onClick} style={{display:"inline-flex",alignItems:"center",padding:sm?"1px 7px":"3px 10px",borderRadius:99,fontSize:sm?10:11,fontWeight:600,background:filled?color:"transparent",color:filled?"#fff":color,border:`1.5px solid ${filled?color:color+"55"}`,cursor:onClick?"pointer":"default",transition:"all 0.15s",userSelect:"none",whiteSpace:"nowrap"}}>{children}</span>;
 }
-function Card({children,style={}}){return <div style={{background:C.card,borderRadius:14,padding:22,boxShadow:C.sh,border:`1px solid ${C.bl}`,...style}}>{children}</div>;}
+function Card({children,style={},onClick,title}){
+  const hov=onClick?{onMouseEnter:ev=>{ev.currentTarget.style.boxShadow=`0 0 0 2px ${C.teal}`;},onMouseLeave:ev=>{ev.currentTarget.style.boxShadow=C.sh;}}:{};
+  return <div onClick={onClick} title={title} {...hov} style={{background:C.card,borderRadius:14,padding:22,boxShadow:C.sh,border:`1px solid ${C.bl}`,transition:"box-shadow 0.15s",...style}}>{children}</div>;
+}
 function STitle({children,sub}){return <div style={{marginBottom:14}}><h3 style={{margin:0,fontSize:13,fontWeight:700,color:C.td,textTransform:"uppercase",letterSpacing:1.5}}>{children}</h3>{sub&&<p style={{margin:"2px 0 0",fontSize:11,color:C.tm}}>{sub}</p>}</div>;}
 function HeatCell({count,max,onClick,title}){
   const g=count===0,w=count===1,int=max>0?count/max:0;
@@ -203,33 +210,43 @@ const SEEN_KEY="rewire_gap_guide_seen";
 const guideSeenBefore=()=>{try{return sessionStorage.getItem(SEEN_KEY)==="1";}catch(e){return false;}};
 const markGuideSeen=()=>{try{sessionStorage.setItem(SEEN_KEY,"1");}catch(e){}};
 
-function CellPopup({cell,filtered,DATA,sectF,matF,scF,search,onClose,onOpenOrg}){
+/* ── Organisation pop-up (changes 3 and 6) ──
+   popup = { kind, title, what, match, useAll }
+   kind   : "cell" | "bar" | "card"           (header caption)
+   title  : React node shown as the heading
+   what   : sentence fragment for the empty state, e.g. "is active at Equipment with SiC"
+   match  : d => boolean, membership predicate
+   useAll : true when the clicked figure was computed from the full dataset (everything on
+            the Overview tab), so the list ignores the current filters */
+const KIND_CAP={cell:"Organisations behind this cell",bar:"Organisations behind this bar",card:"Organisations behind this card"};
+function OrgPopup({popup,filtered,DATA,sectF,matF,scF,search,onClose,onOpenOrg}){
   useEffect(()=>{const k=ev=>{if(ev.key==="Escape")onClose();};window.addEventListener("keydown",k);return()=>window.removeEventListener("keydown",k);},[onClose]);
-  const inCell=d=>d.supplyChain.includes(cell.s)&&d.materials.includes(cell.m);
-  const rows=filtered.filter(inCell);
-  const all=DATA.filter(inCell);
+  const base=popup.useAll?DATA:filtered;
+  const rows=base.filter(popup.match);
+  const all=DATA.filter(popup.match);
   const bySector=SECTS.map(x=>({s:x,n:all.filter(d=>d.sector===x).length})).filter(x=>x.n>0);
-  const filterOn=sectF||matF||scF||search;
+  const filterOn=!popup.useAll&&(sectF||matF||scF||search);
   const scope=filterOn?[sectF&&SECT_LABELS[sectF],matF&&MS[matF],scF,search&&`"${search}"`].filter(Boolean).join(" · "):"full dataset";
+  const isCell=popup.kind==="cell";
   const stop=ev=>ev.stopPropagation();
   return(
     <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(10,30,40,0.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:24}}>
       <div onClick={stop} style={{background:C.card,borderRadius:14,boxShadow:"0 12px 40px rgba(0,40,60,0.25)",width:"100%",maxWidth:640,maxHeight:"85vh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
         <div style={{padding:"18px 22px 12px",borderBottom:`1px solid ${C.bl}`,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
           <div>
-            <div style={{fontSize:10,color:C.tm,fontWeight:700,textTransform:"uppercase",letterSpacing:1.2}}>Organisations behind this cell</div>
-            <div style={{fontSize:17,fontWeight:700,color:C.tx,marginTop:2}}>{cell.s}<span style={{color:C.tm,fontWeight:500}}> x </span><span style={{color:C[cell.m]}}>{MS[cell.m]}</span></div>
-            <div style={{fontSize:12,color:C.ts,marginTop:4}}><strong style={{color:rows.length===0?C.red:rows.length===1?C.amb:C.teal,fontFamily:mn}}>{rows.length}</strong> in the current selection ({scope})</div>
+            <div style={{fontSize:10,color:C.tm,fontWeight:700,textTransform:"uppercase",letterSpacing:1.2}}>{KIND_CAP[popup.kind]||KIND_CAP.bar}</div>
+            <div style={{fontSize:17,fontWeight:700,color:C.tx,marginTop:2}}>{popup.title}</div>
+            <div style={{fontSize:12,color:C.ts,marginTop:4}}><strong style={{color:rows.length===0?C.red:rows.length===1?C.amb:C.teal,fontFamily:mn}}>{rows.length}</strong> {popup.useAll?"in the full dataset":`in the current selection (${scope})`}</div>
           </div>
           <button onClick={onClose} title="Close" style={{background:"transparent",border:"none",color:C.tm,cursor:"pointer",fontSize:20,padding:4,lineHeight:1}}>✕</button>
         </div>
         <div style={{overflowY:"auto",padding:"8px 22px 16px"}}>
           {rows.length===0?(
             <div style={{padding:"18px 0 8px"}}>
-              <div style={{fontSize:13,color:C.tx,fontWeight:600}}>No organisation in the current selection is active at {cell.s} with {MS[cell.m]}.</div>
+              <div style={{fontSize:13,color:C.tx,fontWeight:600}}>No organisation in the {popup.useAll?"dataset":"current selection"} {popup.what}.</div>
               {filterOn&&all.length>0&&<div style={{fontSize:12,color:C.ts,marginTop:8,lineHeight:1.6}}>Across the full dataset there {all.length===1?"is":"are"} <strong style={{fontFamily:mn}}>{all.length}</strong> ({bySector.map(x=>`${x.n} ${SECT_LABELS[x.s]}`).join(", ")}). Clear the filters to see {all.length===1?"it":"them"}.</div>}
-              {filterOn&&all.length===0&&<div style={{fontSize:12,color:C.ts,marginTop:8}}>This is also a gap across the full dataset.</div>}
-              {!filterOn&&<div style={{fontSize:12,color:C.ts,marginTop:8}}>This is a gap across the whole ecosystem mapped so far.</div>}
+              {filterOn&&all.length===0&&isCell&&<div style={{fontSize:12,color:C.ts,marginTop:8}}>This is also a gap across the full dataset.</div>}
+              {!filterOn&&isCell&&<div style={{fontSize:12,color:C.ts,marginTop:8}}>This is a gap across the whole ecosystem mapped so far.</div>}
             </div>
           ):rows.map((d,i)=>(
             <div key={i} onClick={()=>onOpenOrg(d)} title="Open in Explorer" style={{display:"flex",alignItems:"center",gap:12,padding:"10px 8px",borderBottom:i<rows.length-1?`1px solid ${C.bl}`:"none",cursor:"pointer",borderRadius:6}} onMouseEnter={ev=>{ev.currentTarget.style.background=C.tg;}} onMouseLeave={ev=>{ev.currentTarget.style.background="transparent";}}>
@@ -261,12 +278,20 @@ function App(){
   const[dragOver,setDragOver]=useState(false);
   const fileRef=useRef(null);
   const[guideStep,setGuideStep]=useState(0);
-  const[cell,setCell]=useState(null);
+  const[popup,setPopup]=useState(null);
   useEffect(()=>{if(tab==="gaps"&&!guideSeenBefore()){markGuideSeen();setGuideStep(1);}},[tab]);
-  const goTab=id=>{setTab(id);setCell(null);};
+  const goTab=id=>{setTab(id);setPopup(null);};
   const guideAdvance=from=>{if(guideStep===from)setGuideStep(from<GUIDE_STEPS.length?from+1:0);};
-  const closeCell=useCallback(()=>setCell(null),[]);
-  const openOrg=d=>{setCell(null);setSelOrg(d);setTab("explorer");window.scrollTo({top:0,behavior:"smooth"});};
+  const closePopup=useCallback(()=>setPopup(null),[]);
+  /* Pop-up builders (change 6). Every clickable figure describes itself with a predicate. */
+  const matX=(node,color)=><span><span style={{color:C.tm,fontWeight:500}}> x </span><span style={{color}}>{node}</span></span>;
+  const cellPopup=(s,m)=>({kind:"cell",title:<span>{s}{matX(MS[m],C[m])}</span>,what:`is active at ${s} with ${MS[m]}`,match:d=>d.supplyChain.includes(s)&&d.materials.includes(m)});
+  const stagePopup=s=>({kind:"bar",title:s,what:`is active at the ${s} stage`,match:d=>d.supplyChain.includes(s)});
+  const stageSectorPopup=(s,sec)=>({kind:"bar",title:<span>{s}{matX(SECT_LABELS[sec],C[sec])}</span>,what:`from ${SECT_LABELS[sec]} is active at the ${s} stage`,match:d=>d.supplyChain.includes(s)&&d.sector===sec});
+  const materialPopup=m=>({kind:"bar",title:<span style={{color:C[m]}}>{ML[m]}</span>,what:`works with ${MS[m]}`,match:d=>d.materials.includes(m)});
+  const locationPopup=loc=>({kind:"bar",title:loc==="Unknown"?"Location unspecified":loc,what:loc==="Unknown"?"has an unspecified location":`is located in ${loc}`,match:d=>d.location===loc||(loc==="Unknown"&&d.location==="Unspecified")});
+  const statPopup=(label,match,what)=>({kind:"card",title:label,what,match,useAll:true});
+  const openOrg=d=>{setPopup(null);setSelOrg(d);setTab("explorer");window.scrollTo({top:0,behavior:"smooth"});};
 
   const handleCSV=useCallback((file)=>{
     if(!file)return;const reader=new FileReader();
@@ -286,17 +311,18 @@ function App(){
 
   const heat=useMemo(()=>{const mx={};let max=0;SC.forEach(s=>{mx[s]={};MATS.forEach(m=>{const c=filtered.filter(d=>d.supplyChain.includes(s)&&d.materials.includes(m)).length;mx[s][m]=c;if(c>max)max=c;});});return{mx,max};},[filtered]);
 
+  /* Overview charts use the full dataset (like the stat and insight cards): the Overview has no filter bar, so it shows the global picture and changes only on CSV upload / Reset */
   const scBarData=useMemo(()=>SC.map(s=>({
     label:s,
     values:[
-      filtered.filter(d=>d.sector==="Industry"&&d.supplyChain.includes(s)).length,
-      filtered.filter(d=>d.sector==="Academic"&&d.supplyChain.includes(s)).length,
-      filtered.filter(d=>d.sector==="Other"&&d.supplyChain.includes(s)).length,
+      DATA.filter(d=>d.sector==="Industry"&&d.supplyChain.includes(s)).length,
+      DATA.filter(d=>d.sector==="Academic"&&d.supplyChain.includes(s)).length,
+      DATA.filter(d=>d.sector==="Other"&&d.supplyChain.includes(s)).length,
     ]
-  })),[filtered]);
+  })),[DATA]);
 
   const insights=useMemo(()=>computeInsights(DATA),[DATA]);
-  const matBar=useMemo(()=>MATS.map(m=>({name:MS[m],full:ML[m],count:filtered.filter(d=>d.materials.includes(m)).length,fill:C[m]})),[filtered]);
+  const matBar=useMemo(()=>MATS.map(m=>({key:m,name:MS[m],full:ML[m],count:DATA.filter(d=>d.materials.includes(m)).length,fill:C[m]})),[DATA]);
   const hasF=sectF||matF||scF||search;
   const clearF=()=>{setSectF(null);setMatF(null);setScF(null);setSearch("");};
 
@@ -322,8 +348,8 @@ function App(){
   const Overview=()=>(
     <div>
       <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:24}}>
-        {[{l:"Total Mapped",v:DATA.length,c:C.teal},{l:"Industry",v:DATA.filter(d=>d.sector==="Industry").length,c:C.Industry},{l:"Academic",v:DATA.filter(d=>d.sector==="Academic").length,c:C.Academic},{l:"Supporting Bodies",v:DATA.filter(d=>d.sector==="Other").length,c:C.Other},{l:"UK Industry",v:DATA.filter(d=>d.sector==="Industry"&&d.location==="UK").length,c:C.td}].map((s,i)=>(
-          <Card key={i} style={{flex:1,minWidth:120,textAlign:"center",padding:"18px 14px"}}>
+        {[{l:"Total Mapped",c:C.teal,f:d=>true,w:"is loaded"},{l:"Industry",c:C.Industry,f:d=>d.sector==="Industry",w:"is an industry organisation"},{l:"Academic",c:C.Academic,f:d=>d.sector==="Academic",w:"is an academic organisation"},{l:"Supporting Bodies",c:C.Other,f:d=>d.sector==="Other",w:"is a supporting body"},{l:"UK Industry",c:C.td,f:d=>d.sector==="Industry"&&d.location==="UK",w:"is a UK-based industry organisation"}].map(s=>({...s,v:DATA.filter(s.f).length})).map((s,i)=>(
+          <Card key={i} onClick={()=>setPopup(statPopup(s.l,s.f,s.w))} title={`${s.l}: click to list organisations`} style={{flex:1,minWidth:120,textAlign:"center",padding:"18px 14px",cursor:"pointer"}}>
             <div style={{fontSize:34,fontWeight:800,color:s.c,lineHeight:1,fontFamily:mn}}>{s.v}</div>
             <div style={{fontSize:10,color:C.tm,marginTop:6,fontWeight:600,textTransform:"uppercase",letterSpacing:0.8}}>{s.l}</div>
           </Card>
@@ -331,17 +357,17 @@ function App(){
       </div>
       <div style={{display:"grid",gridTemplateColumns:"3fr 2fr",gap:16,marginBottom:20}}>
         <Card>
-          <STitle sub="Organisations at each supply chain stage, by sector">Supply Chain Distribution</STitle>
+          <STitle sub="Organisations at each supply chain stage, by sector. Click a segment or a stage name to list them.">Supply Chain Distribution</STitle>
           <div style={{display:"flex",gap:8,marginBottom:10,justifyContent:"flex-end"}}>
             {["Industry","Academic","Other"].map(s=><span key={s} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:C.ts}}><span style={{width:10,height:10,borderRadius:2,background:C[s],display:"inline-block"}}/>{SECT_LABELS[s]}</span>)}
           </div>
-          <StackedBar data={scBarData} colors={[C.Industry,C.Academic,C.Other]}/>
+          <StackedBar data={scBarData} colors={[C.Industry,C.Academic,C.Other]} segLabels={SECTS.map(x=>SECT_LABELS[x])} onSeg={(i,j)=>setPopup({...stageSectorPopup(SC[i],SECTS[j]),useAll:true})} onRow={i=>setPopup({...stagePopup(SC[i]),useAll:true})}/>
         </Card>
         <Card>
-          <STitle sub="Organisations working with each material system">Material Coverage</STitle>
+          <STitle sub="Organisations working with each material system. Click a bar to list them.">Material Coverage</STitle>
           <div style={{display:"flex",flexDirection:"column",gap:12,marginTop:8}}>
             {matBar.map((m,i)=>{const mx=Math.max(...matBar.map(x=>x.count),1);return(
-              <div key={i}>
+              <div key={i} onClick={()=>setPopup({...materialPopup(m.key),useAll:true})} title={`${m.full}: ${m.count}, click to list organisations`} style={{cursor:"pointer",borderRadius:8,padding:"4px 6px",margin:"-4px -6px"}} onMouseEnter={ev=>{ev.currentTarget.style.background=C.tg;}} onMouseLeave={ev=>{ev.currentTarget.style.background="transparent";}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
                   <span style={{fontSize:13,fontWeight:600,color:m.fill}}>{m.full}</span>
                   <span style={{fontSize:18,fontWeight:800,color:m.fill,fontFamily:mn}}>{m.count}</span>
@@ -355,10 +381,10 @@ function App(){
         </Card>
       </div>
       <Card>
-        <STitle sub="Computed from the loaded dataset; updates when new data is uploaded">Ecosystem at a Glance</STitle>
+        <STitle sub="Computed from the loaded dataset; updates when new data is uploaded. Click a card to list the organisations behind it.">Ecosystem at a Glance</STitle>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14}}>
           {insights.map((c,i)=>(
-            <div key={i} style={{padding:"16px 18px",background:c.color+"08",borderRadius:10,borderLeft:`3px solid ${c.color}`}}>
+            <div key={i} onClick={()=>setPopup(statPopup(c.label,c.match,c.what))} title={`Click to list: ${c.label}`} style={{padding:"16px 18px",background:c.color+"08",borderRadius:10,borderLeft:`3px solid ${c.color}`,cursor:"pointer",transition:"box-shadow 0.15s"}} onMouseEnter={ev=>{ev.currentTarget.style.boxShadow=`0 0 0 2px ${c.color}55`;}} onMouseLeave={ev=>{ev.currentTarget.style.boxShadow="none";}}>
               <div style={{fontSize:20,marginBottom:6}}>{c.icon}</div>
               <div style={{fontSize:13,fontWeight:700,color:C.tx,marginBottom:4}}>{c.title}</div>
               <div style={{fontSize:12,color:C.ts,lineHeight:1.55}}>{c.desc}</div>
@@ -430,7 +456,7 @@ function App(){
     const scopeLabel=sectF?SECT_LABELS[sectF]:null;
     const sectN=sectF?DATA.filter(d=>d.sector===sectF).length:DATA.length;
     const rowItem=(g,i,gap)=>(
-      <div key={i} onClick={()=>{setCell({s:g.s,m:g.m});guideAdvance(3);}} title="Show the organisations behind this cell" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:gap?C.rb:C.ab,borderRadius:8,border:gap?`1px solid ${C.rr}`:"1px solid rgba(239,108,0,0.15)",cursor:"pointer"}} onMouseEnter={ev=>{ev.currentTarget.style.boxShadow=`0 0 0 2px ${gap?C.red:C.amb}55`;}} onMouseLeave={ev=>{ev.currentTarget.style.boxShadow="none";}}>
+      <div key={i} onClick={()=>{setPopup(cellPopup(g.s,g.m));guideAdvance(3);}} title="Show the organisations behind this cell" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:gap?C.rb:C.ab,borderRadius:8,border:gap?`1px solid ${C.rr}`:"1px solid rgba(239,108,0,0.15)",cursor:"pointer"}} onMouseEnter={ev=>{ev.currentTarget.style.boxShadow=`0 0 0 2px ${gap?C.red:C.amb}55`;}} onMouseLeave={ev=>{ev.currentTarget.style.boxShadow="none";}}>
         <div><span style={{fontWeight:600,color:C.tx,fontSize:12}}>{g.s}</span><span style={{color:C.tm,fontSize:12}}> x </span><span style={{fontWeight:600,color:C[g.m],fontSize:12}}>{MS[g.m]}</span></div>
         <span style={{fontSize:9,fontWeight:800,padding:"2px 8px",borderRadius:99,background:gap?C.red:C.amb,color:"#fff",letterSpacing:gap?1:0}}>{gap?"GAP":"1 ONLY"}</span>
       </div>
@@ -452,7 +478,7 @@ function App(){
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"separate",borderSpacing:5}}>
               <thead><tr><th style={{padding:10}}/>{MATS.map(m=><th key={m} style={{padding:10,textAlign:"center",fontSize:13,fontWeight:700,color:C[m]}}>{MS[m]}</th>)}<th style={{padding:10,textAlign:"center",fontSize:11,color:C.tm,fontWeight:700}}>Total</th></tr></thead>
-              <tbody>{SC.map(s=>{const total=filtered.filter(d=>d.supplyChain.includes(s)).length;return(<tr key={s}><td style={{padding:"10px 14px",color:C.tx,fontSize:13,fontWeight:600,whiteSpace:"nowrap"}}>{s}</td>{MATS.map(m=><HeatCell key={m} count={heat.mx[s]?.[m]||0} max={heat.max} onClick={()=>{setCell({s,m});guideAdvance(2);}} title={`${s} x ${MS[m]}: click to list organisations`}/>)}<td style={{padding:"10px 14px",textAlign:"center",color:C.tm,fontSize:14,fontWeight:700,fontFamily:mn}}>{total}</td></tr>);})}</tbody>
+              <tbody>{SC.map(s=>{const total=filtered.filter(d=>d.supplyChain.includes(s)).length;return(<tr key={s}><td style={{padding:"10px 14px",color:C.tx,fontSize:13,fontWeight:600,whiteSpace:"nowrap"}}>{s}</td>{MATS.map(m=><HeatCell key={m} count={heat.mx[s]?.[m]||0} max={heat.max} onClick={()=>{setPopup(cellPopup(s,m));guideAdvance(2);}} title={`${s} x ${MS[m]}: click to list organisations`}/>)}<td onClick={()=>setPopup(stagePopup(s))} title={`${s}: ${total}, click to list organisations`} style={{padding:"10px 14px",textAlign:"center",color:C.tm,fontSize:14,fontWeight:700,fontFamily:mn,cursor:"pointer"}}>{total}</td></tr>);})}</tbody>
             </table>
           </div>
         </Card>
@@ -467,16 +493,16 @@ function App(){
 
   const ChainTab=()=>{
     const locData={};filtered.forEach(d=>{const l=d.location==="Unknown"?"Unspecified":d.location;locData[l]=(locData[l]||0)+1;});
-    const locBar=Object.entries(locData).sort((a,b)=>b[1]-a[1]).map(([n,v])=>({label:n,value:v,color:n==="UK"?C.teal:n==="Unspecified"?C.bd:C.Academic}));
+    const locBar=Object.entries(locData).sort((a,b)=>b[1]-a[1]).map(([n,v])=>({label:n,loc:n==="Unspecified"?"Unknown":n,value:v,color:n==="UK"?C.teal:n==="Unspecified"?C.bd:C.Academic}));
     const maxSc=Math.max(...SC.map(s=>filtered.filter(d=>d.supplyChain.includes(s)).length),1);
     return(
       <div>
         <FilterBar/>
         <Card style={{marginBottom:18}}>
-          <STitle sub="Upstream to Downstream. Red = low-density stages.">Supply Chain Pipeline</STitle>
+          <STitle sub="Upstream to Downstream. Red = low-density stages. Click a bar to list the organisations.">Supply Chain Pipeline</STitle>
           <div style={{display:"flex",flexDirection:"column",gap:3,marginTop:8}}>
             {SC.map(s=>{const count=filtered.filter(d=>d.supplyChain.includes(s)).length;const pct=(count/maxSc)*100;const isWeak=count<10;return(
-              <div key={s} style={{display:"flex",alignItems:"center",gap:12}}>
+              <div key={s} onClick={()=>setPopup(stagePopup(s))} title={`${s}: ${count}, click to list organisations`} style={{display:"flex",alignItems:"center",gap:12,cursor:"pointer",borderRadius:8,padding:"2px 4px"}} onMouseEnter={ev=>{ev.currentTarget.style.background=C.tg;}} onMouseLeave={ev=>{ev.currentTarget.style.background="transparent";}}>
                 <div style={{width:110,fontSize:12,color:C.ts,textAlign:"right",fontWeight:600,flexShrink:0}}>{s}</div>
                 <div style={{flex:1,height:32,background:C.bg,borderRadius:6,overflow:"hidden",border:`1px solid ${C.bl}`}}>
                   <div style={{width:Math.max(pct,3)+"%",height:"100%",borderRadius:5,background:isWeak?`linear-gradient(90deg,${C.red}cc,${C.red}88)`:`linear-gradient(90deg,${C.teal},${C.tl})`,display:"flex",alignItems:"center",paddingLeft:10,transition:"width 0.5s"}}>
@@ -489,11 +515,11 @@ function App(){
           </div>
         </Card>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-          <Card><STitle sub="HQ or significant presence">Geographic Distribution</STitle><HBar data={locBar}/></Card>
-          <Card><STitle sub="Organisations spanning 3+ stages">Top Vertically-Integrated Players</STitle>
+          <Card><STitle sub="HQ or significant presence. Click a bar to list the organisations.">Geographic Distribution</STitle><HBar data={locBar} onClick={i=>setPopup(locationPopup(locBar[i].loc))}/></Card>
+          <Card><STitle sub="Organisations spanning 3+ stages. Click a row to open it in the Explorer.">Top Vertically-Integrated Players</STitle>
             <div style={{display:"flex",flexDirection:"column",gap:4}}>
               {[...filtered].filter(d=>d.supplyChain.length>=3).sort((a,b)=>b.supplyChain.length-a.supplyChain.length).slice(0,10).map((d,i)=>(
-                <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 10px",borderRadius:6,background:i%2===0?C.tg:"transparent"}}>
+                <div key={i} onClick={()=>openOrg(d)} title="Open in Explorer" style={{display:"flex",alignItems:"center",gap:10,padding:"6px 10px",borderRadius:6,background:i%2===0?C.tg:"transparent",cursor:"pointer"}} onMouseEnter={ev=>{ev.currentTarget.style.boxShadow=`inset 0 0 0 2px ${C.teal}55`;}} onMouseLeave={ev=>{ev.currentTarget.style.boxShadow="none";}}>
                   <span style={{fontSize:12,fontWeight:600,color:C.tx,minWidth:140}}>{d.name}</span>
                   <div style={{display:"flex",gap:3,flexWrap:"wrap",flex:1}}>{d.supplyChain.map(s=><Chip key={s} color={C.teal} sm>{s}</Chip>)}</div>
                   <Chip color={C[d.sector]} filled sm>{SECT_LABELS[d.sector]||d.sector}</Chip>
@@ -567,7 +593,7 @@ function App(){
         {tab==="chain"&&ChainTab()}
         {tab==="data"&&DataTab()}
       </div>
-      {cell&&<CellPopup cell={cell} filtered={filtered} DATA={DATA} sectF={sectF} matF={matF} scF={scF} search={search} onClose={closeCell} onOpenOrg={openOrg}/>}
+      {popup&&<OrgPopup popup={popup} filtered={filtered} DATA={DATA} sectF={sectF} matF={matF} scF={scF} search={search} onClose={closePopup} onOpenOrg={openOrg}/>}
       <div style={{padding:"14px 32px",borderTop:`1px solid ${C.bd}`,background:"#fff",textAlign:"center",fontSize:10,color:C.tm}}>
         REWIRE Innovation and Knowledge Centre - University of Bristol - Student Challenge 2026
       </div>
