@@ -11,6 +11,12 @@ body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;backgrou
 #loading{display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:12px;color:#00838F;font-size:16px}
 #loading .spin{width:32px;height:32px;border:3px solid #e2e8ee;border-top-color:#00838F;border-radius:50%;animation:sp 0.8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
+/* Map markers (change 7) */
+.rw-pin{display:flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;font-weight:700;font-family:'Cascadia Code','JetBrains Mono','Fira Code',monospace;font-size:11px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,40,60,0.35);cursor:pointer;transition:transform 0.1s}
+.rw-pin:hover{transform:scale(1.15)}
+.rw-pin.hollow{background:rgba(255,255,255,0.85)!important;border:2px dashed currentColor}
+.leaflet-container{font-family:'Segoe UI',-apple-system,sans-serif;background:#e8eef2}
+.leaflet-tooltip.rw-tip{font-size:12px;padding:4px 8px;border-radius:6px}
 </style>
 </head>
 <body>
@@ -25,14 +31,20 @@ window.onerror=function(msg){
 <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://unpkg.com/@babel/standalone@7.24.0/babel.min.js"></script>
 
 <script type="text/babel">
 const{useState,useMemo,useCallback,useRef,useEffect}=React;
 const e=React.createElement;
 
-const DEFAULT_RAW=[{"n": "ABB", "s": "Industry", "r": "SiC modules for mobility", "l": "UK", "sc": ["End user"], "m": ["SiC"]}, {"n": "Advanced Furnace Technology", "s": "Industry", "r": "Manufacturing bespoke high temperature process furnaces for the Material Sciences sector, including semiconductors", "l": "Unknown", "sc": ["Equipment"], "m": ["SiC"]}, {"n": "Airbus", "s": "Industry", "r": "electric and hybrid planes", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "ALTER", "s": "Industry", "r": "packaging and assembly", "l": "UK", "sc": ["Packaging"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Ampaire", "s": "Industry", "r": "hybrid-electric aircraft", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "BAE", "s": "Industry", "r": "defence", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN", "other"]}, {"n": "BMW", "s": "Industry", "r": "SiC for EV", "l": "UK", "sc": ["End user"], "m": ["SiC"]}, {"n": "BOSCH", "s": "Industry", "r": "SiC devices for auto", "l": "Germany", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["SiC"]}, {"n": "Bristol spin out", "s": "Industry", "r": "Ga2O3 epi", "l": "UK", "sc": ["Substrate"], "m": ["Ga2O3"]}, {"n": "Brucker", "s": "Industry", "r": "characterisation equipment", "l": "UK", "sc": [], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Cadence", "s": "Industry", "r": "TCAD", "l": "USA", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Camvertec", "s": "Industry", "r": "specialize in AI, IT, Power Electronics and Control Systems, for sectors including automotive, healthcare, automated customer services", "l": "Unknown", "sc": [], "m": ["SiC"]}, {"n": "CGD", "s": "Industry", "r": "GaN HEMPTs with integrated gate tech, fabless. Involved in UC", "l": "UK", "sc": ["Device design"], "m": ["GaN"]}, {"n": "Clas-SiC", "s": "Industry", "r": "150 mm SiC foundry", "l": "UK", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["SiC"]}, {"n": "CRU (Exawatt)", "s": "Industry", "r": "Global leaders in market analysis, price assessments, consulting", "l": "Unknown", "sc": [], "m": ["SiC"]}, {"n": "Custom Interconnect", "s": "Industry", "r": "packaging", "l": "UK", "sc": ["Packaging"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Drive System Design", "s": "Industry", "r": "electrification and electric drive units for hybrid and electric vehicles", "l": "Unknown", "sc": ["End user"], "m": ["SiC"]}, {"n": "Dynex", "s": "Industry", "r": "SiC devices", "l": "UK", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["SiC"]}, {"n": "EDF Power Solutions", "s": "Industry", "r": "Battery Storage Solutions and Electric Vehicle (EV) Charging Solutions", "l": "Unknown", "sc": ["End user"], "m": ["SiC"]}, {"n": "Element six", "s": "Industry", "r": "diamond substrates", "l": "UK", "sc": ["Substrate"], "m": ["other"]}, {"n": "EMPEL Systems", "s": "Industry", "r": "State-of-the-art integrated electric motor and power electronics modules for the automotive, aerospace, industrial machine, robotic and green-tech markets", "l": "Unknown", "sc": ["End user"], "m": ["SiC"]}, {"n": "GE aerospace", "s": "Industry", "r": "SiC modules for hybrid aircraft", "l": "UK", "sc": ["End user"], "m": ["SiC"]}, {"n": "GE Vernova", "s": "Industry", "r": "Grid solutions and power conversion", "l": "Unknown", "sc": ["End user"], "m": ["SiC"]}, {"n": "GE Verona", "s": "Industry", "r": "SiC for high power DC-DC links", "l": "UK", "sc": ["End user"], "m": ["SiC"]}, {"n": "GKN", "s": "Industry", "r": "electric aircraft and space", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "Hitachi", "s": "Industry", "r": "SiC devices", "l": "Switzerland", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["SiC", "GaN"]}, {"n": "IceMoS Technology", "s": "Industry", "r": "Customised, cost effective and high performance Superjunction MOSFETs, MEMS solutions and Advanced Engineering Substrates, including SiC for", "l": "Unknown", "sc": ["Epiwafer", "Device design", "Manufacturing", "Packaging"], "m": ["SiC"]}, {"n": "INEX Microtechnology", "s": "Industry", "r": "Full-service compound semiconductor development and fabrication company", "l": "Unknown", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["SiC"]}, {"n": "Inseto", "s": "Industry", "r": "equipment, packaging and wafers", "l": "UK", "sc": ["Equipment", "Substrate", "Packaging"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "ipTest", "s": "Industry", "r": "test equipment, Warwick have equipment", "l": "UK", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "IQE", "s": "Industry", "r": "GaN epi", "l": "UK", "sc": ["Epiwafer"], "m": ["GaN"]}, {"n": "JLR", "s": "Industry", "r": "SiC for EV", "l": "UK", "sc": ["End user"], "m": ["SiC"]}, {"n": "KLA", "s": "Industry", "r": "Plasma processing. PhD student with REWIRE", "l": "UK", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Kuasa Semi", "s": "Industry", "r": "Innovative, intuitive semiconductor design solutions, specifically aimed at WBGOpen call project with REWIRE - VESPA", "l": "UK", "sc": ["Equipment"], "m": ["SiC", "GaN"]}, {"n": "Littlefuse", "s": "Industry", "r": "SiC device", "l": "UK", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["SiC", "GaN"]}, {"n": "MBDA", "s": "Industry", "r": "Defence and RF", "l": "UK", "sc": ["End user"], "m": ["GaN"]}, {"n": "McLaren", "s": "Industry", "r": "SiC for EV", "l": "UK", "sc": ["End user"], "m": ["SiC"]}, {"n": "Morgan", "s": "Industry", "r": "ceramic and carbon materials for packaging and growth", "l": "UK", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Morgan Advanced Materials", "s": "Industry", "r": "ceramic components and electrical and thermal management", "l": "Unknown", "sc": ["Packaging"], "m": ["SiC"]}, {"n": "Nascent Semiconductor", "s": "Industry", "r": "LECTRONIC COMPONENTS FOR EXTREME ENVIRONMENTS, Quantum SiC for Extreme Application Clock Technology (example project)", "l": "Unknown", "sc": ["Device design", "Manufacturing"], "m": ["SiC"]}, {"n": "National Grid", "s": "Industry", "r": "grid modernization and the integration of renewable energy sources", "l": "Unknown", "sc": ["End user"], "m": ["SiC"]}, {"n": "Nexperia", "s": "Industry", "r": "GaN and SiC devices", "l": "UK", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["SiC", "GaN"]}, {"n": "NextGo Epi", "s": "Industry", "r": "Ga2O3 epi", "l": "Germany", "sc": ["Epiwafer"], "m": ["Ga2O3"]}, {"n": "Nissan", "s": "Industry", "r": "SiC for EV, have reliability project with Bristol", "l": "UK", "sc": ["End user"], "m": ["SiC"]}, {"n": "Noval Crystals", "s": "Industry", "r": "Ga2O3 epi", "l": "Japan", "sc": ["Epiwafer"], "m": ["Ga2O3"]}, {"n": "OIPT", "s": "Industry", "r": "Plasma processing and analysis kit, projects with REWIRE", "l": "UK", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "onsemi", "s": "Industry", "r": "SiC and GaN devices, incl 1200 V GaN", "l": "USA", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["SiC", "GaN"]}, {"n": "Orbray", "s": "Industry", "r": "diamond substrates", "l": "Japan", "sc": ["Substrate"], "m": ["other"]}, {"n": "pECM Systems", "s": "Industry", "r": "Electro Chemical Machine (ECM) and Electro Discharge Machine (EDM) manufacturing (specialism in SiC)", "l": "Unknown", "sc": ["End user"], "m": ["SiC"]}, {"n": "Power Matrix", "s": "Industry", "r": "efficient compact DC-DC power supplies", "l": "UK", "sc": ["End user"], "m": ["GaN"]}, {"n": "QFI", "s": "Industry", "r": "AF, microscopes, temp measurement", "l": "USA", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Quantum/other", "s": "Industry", "r": "", "l": "Unknown", "sc": [], "m": []}, {"n": "Radtest", "s": "Industry", "r": "radiation testing", "l": "UK", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "RAM Innovations", "s": "Industry", "r": "embedded die packaging", "l": "UK", "sc": ["Packaging"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "RENA", "s": "Industry", "r": "wet processing", "l": "UK", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Renesas", "s": "Industry", "r": "Produces variety of GaN devices including 650 V and 700 V GaN FETs, GaN-based power devices and solutions, Interested in 600 V SiC Schottky diode and transistor SiC devices", "l": "Japan", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["GaN"]}, {"n": "Renishaw", "s": "Industry", "r": "measurement equipment", "l": "UK", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Ricardo", "s": "Industry", "r": "vehicle electrification and powertrain development", "l": "Unknown", "sc": ["End user"], "m": ["SiC"]}, {"n": "Rohm", "s": "Industry", "r": "GaN and SiC devices", "l": "Unknown", "sc": ["Device design", "Manufacturing"], "m": ["SiC", "GaN"]}, {"n": "Semikron Danfoss", "s": "Industry", "r": "Semiconductor devices, power modules, stacks and systems, make SiC containing modules (not devices)", "l": "Germany", "sc": ["End user"], "m": ["SiC"]}, {"n": "Siemens", "s": "Industry", "r": "mobility, industry drives and motors", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "Silvaco", "s": "Industry", "r": "Technology computer aided design (TCAD) software and SPICE (compact) models", "l": "USA", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Sumitomo", "s": "Industry", "r": "GaN/AlN epi wafer", "l": "Japan", "sc": ["Substrate", "Epiwafer"], "m": ["GaN"]}, {"n": "Sora Aviation", "s": "Industry", "r": "small electric planes", "l": "UK", "sc": ["End user"], "m": ["SiC"]}, {"n": "ST Micro", "s": "Industry", "r": "SiC devices", "l": "Italy", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["SiC"]}, {"n": "tae power solutions", "s": "Industry", "r": "auto", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "Toshiba", "s": "Industry", "r": "SiC devices and modules", "l": "research in UK", "sc": ["Device design", "Manufacturing", "Packaging", "End user"], "m": ["SiC"]}, {"n": "Tribus-D", "s": "Industry", "r": "New power package development for SiC", "l": "Unknown", "sc": ["Packaging"], "m": ["SiC"]}, {"n": "TT Electronics", "s": "Industry", "r": "power electronics, specifically power modules and power supplies", "l": "Unknown", "sc": ["End user"], "m": ["SiC"]}, {"n": "TTPi", "s": "Industry", "r": "Transforming electronics for sustainable transport and energy systems. DC-DC converters", "l": "UK", "sc": ["Packaging", "End user"], "m": ["SiC", "GaN"]}, {"n": "ULTEC", "s": "Industry", "r": "AlN wafer/epi", "l": "Japan", "sc": ["Substrate", "Epiwafer"], "m": ["other"]}, {"n": "Vertical Aerospace", "s": "Industry", "r": "small electric planes", "l": "UK", "sc": ["End user"], "m": ["SiC"]}, {"n": "Vishay", "s": "Industry", "r": "SiC and GaN devices", "l": "UK", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["SiC", "GaN"]}, {"n": "Wolfspeed", "s": "Industry", "r": "SiC wafers", "l": "USA", "sc": ["Substrate", "Epiwafer", "Device design", "Manufacturing"], "m": ["SiC"]}, {"n": "YASA", "s": "Industry", "r": "axial-flux motor technology", "l": "Unknown", "sc": ["End user"], "m": ["SiC"]}, {"n": "ZAP Power", "s": "Industry", "r": "cryo DC-DC power for datacentre", "l": "UK", "sc": ["Device design", "Manufacturing", "Packaging", "End user"], "m": ["GaN", "other"]}, {"n": "Zeiss", "s": "Industry", "r": "Microscopy systems, FA and device reliability", "l": "UK", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Birmingham City University", "s": "Academic", "r": "Solar PV system, energy harvesting technology, energy storage and power electronics areas", "l": "UK", "sc": [], "m": []}, {"n": "Coventry University", "s": "Academic", "r": "Next generation of electrified propulsion systems for the automotive, aerospace, marine and rail industries, GaN power electronics - modelling and simulation", "l": "UK", "sc": ["Device design", "End user"], "m": ["SiC", "GaN"]}, {"n": "Heriot Watt University", "s": "Academic", "r": "SiC quantum materials and devices", "l": "UK", "sc": [], "m": ["SiC"]}, {"n": "Imperial College London", "s": "Academic", "r": "Design and control of power electronic converters, HVDC transmission and new forms of low voltage power distribution, Power electronics circuit and converter designs for HVDC", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "Loughborough University", "s": "Academic", "r": "Power electronics as it relates to the electricity grid, Switched capacitor converters for HVDC applications", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "Newcastle University", "s": "Academic", "r": "Silicon Carbide MOSFETs, Interface engineering and heterogeneous integration, Atomic Layer Interface Engineering, Packaging?", "l": "UK", "sc": ["Device design", "Manufacturing"], "m": ["SiC"]}, {"n": "Northumbria University Newcastle", "s": "Academic", "r": "Electrical power conversion, Control algorithms for electric vehicles and renewable energy networks, Health monitoring and condition control of next-generation wide bandgap (WBG) power modules, Power electronics for enabling the electrification of transportation", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "Queen Mary's University London", "s": "Academic", "r": "Power and control system engineering, Advanced control and condition monitoring technologies for SiC-based power electronics", "l": "UK", "sc": ["End user"], "m": ["SiC"]}, {"n": "UCL", "s": "Academic", "r": "Utilising diamond for novel electronic and sensing applications, Radiation-hardened and extreme environment systems", "l": "UK", "sc": ["Device design", "Manufacturing"], "m": ["other"]}, {"n": "University of Aberdeen", "s": "Academic", "r": "The centre provides platform for research activity which spreads over the areas of power systems, power electronics and control engineering.", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "University of Bath", "s": "Academic", "r": "AI for power electronics, Advanced propulsion systems, DC circuit breakers, Cryogenic power electronics", "l": "UK", "sc": ["Device design", "Manufacturing", "End user"], "m": ["SiC", "GaN", "other"]}, {"n": "University of Bristol", "s": "Academic", "r": "Device thermography and reliability, GaN and Ga2O3 power devices, novel material devices (diamond, BN), Advanced gate driving, GaN power electronics and reliability, high-efficiency power electronics, grid-level power electronics", "l": "UK", "sc": ["Epiwafer", "Device design", "Manufacturing", "Packaging", "End user"], "m": ["GaN", "Ga2O3", "other"]}, {"n": "University of Cambridge", "s": "Academic", "r": "GaN devices, Power electronics for multiscale power and energy conversion (GaN and SiC)", "l": "UK", "sc": ["Epiwafer", "Device design", "Manufacturing", "Packaging", "End user"], "m": ["SiC", "GaN"]}, {"n": "University of Cardiff", "s": "Academic", "r": "Compound semiconductor manufacturing, Compound semiconductor high-speed electronic devices, Diamond growth", "l": "UK", "sc": ["Epiwafer", "Device design", "Manufacturing"], "m": ["GaN"]}, {"n": "University of Durham", "s": "Academic", "r": "Electronic and electrical systems for deployment in extreme environments, Renewable Energy Integration, Power Electronics (FACTS/HVDC), Reliability of electrical machines and drives, Smart Grid and Smart Energy", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "University of Edinburgh", "s": "Academic", "r": "Energy storage and power networks", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "University of Glasgow", "s": "Academic", "r": "Device modelling and circuit simulation, Wide Bandgap and Ultra-Wide Bandgap materials including GaN, AlGaN, Ga2O3, cubic boron-nitride and diamond, High-frequency electronics, Gallium nitride (GaN) electronics", "l": "UK", "sc": ["Device design", "Manufacturing"], "m": ["GaN", "Ga2O3", "other"]}, {"n": "University of Greenwich", "s": "Academic", "r": "Developing modelling techniques to support the design of complex engineering components and systems and reliability", "l": "UK", "sc": ["Equipment", "End user"], "m": []}, {"n": "University of Manchester", "s": "Academic", "r": "Optical spectroscopy of electronic materials, Development of spectroscopic techniques and instrumentation, Voltage-source HVDC, Power dense converters", "l": "UK", "sc": ["Epiwafer", "Device design", "Manufacturing", "End user"], "m": ["SiC", "GaN"]}, {"n": "University of Nottingham", "s": "Academic", "r": "Power Electronics and Machines and Drives", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "University of Oxford", "s": "Academic", "r": "Broad area of circuits, systems and control in power electronics", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "University of Sheffield", "s": "Academic", "r": "Wide band gap power semiconductor devices and technologies, Power semiconductor devices and technologies, Semiconductor Epitaxy (MBE), Epitaxy of novel semiconductors materials and devices, Nitride-based semiconductors and their applications", "l": "UK", "sc": ["Epiwafer", "Device design", "Manufacturing", "End user"], "m": ["GaN", "other"]}, {"n": "University of Southampton", "s": "Academic", "r": "SiC photonics, novel power electronic converters for interfacing batteries", "l": "UK", "sc": [], "m": ["SiC", "other"]}, {"n": "University of Strathclyde", "s": "Academic", "r": "Wide bandgap semiconductors for UV optoelectronic devices , Semiconductor physics on group III nitride semiconductors, High temperature Silicon-Carbide, Packaging", "l": "UK", "sc": ["Device design", "Manufacturing", "Packaging", "End user"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "University of Swansea", "s": "Academic", "r": "Wide bandgap electronic materials (silicon carbide, gallium oxide and gallium nitride) for energy-efficient applications, Simulation and modelling of semiconductor devices, Advanced power electronics and applications; Renewable energy and grid control systems; HIL and rapid control prototyping; Power instrumentation and circuits for wide bandgap semiconductor devices", "l": "UK", "sc": ["Epiwafer", "Device design", "Manufacturing", "Packaging", "End user"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "University of Warwick", "s": "Academic", "r": "SiC, Power electronics, power semiconductor devices and applications in power systems, and power conversion", "l": "UK", "sc": ["Epiwafer", "Device design", "Manufacturing", "Packaging", "End user"], "m": ["SiC"]}, {"n": "University of York", "s": "Academic", "r": "Renewable energy, power electronics, microelectronics and materials", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "Buckinghamshire New University", "s": "Academic", "r": "Electronics packging, interconnection materials, manufacturing, reliability engineering, AI-enabled design", "l": "UK", "sc": ["Device design", "Manufacturing", "Packaging"], "m": []}, {"n": "APC", "s": "Other", "r": "Advanced Propulsion Centre", "l": "UK", "sc": [], "m": []}, {"n": "APRIL AI Hub", "s": "Other", "r": "Transforming the electronics, industry through AI-research", "l": "UK", "sc": ["Device design", "Manufacturing", "Packaging", "End user"], "m": ["GaN"]}, {"n": "Bragg Centre for Materials Research", "s": "Other", "r": "Driving materials innovation, connects materials experts, world-class facilities, expertise, funding. Academia and industry.", "l": "Unknown", "sc": [], "m": []}, {"n": "CHIMES", "s": "Other", "r": "Heterogeneous integration IKC", "l": "UK", "sc": [], "m": []}, {"n": "Compound Semi Manufacturing Hub", "s": "Other", "r": "Mainly photonics", "l": "UK", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["GaN"]}, {"n": "C-PIC (CORNERSTONE)", "s": "Other", "r": "Si photonics IKC", "l": "UK", "sc": [], "m": []}, {"n": "CANUTE", "s": "Other", "r": "UK-Canada Network+ for ECRs working on semiconductors", "l": "Unknown", "sc": [], "m": []}, {"n": "CRAFT", "s": "Other", "r": "Centre for Research in All-Electric Future Technologies", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN", "Ga2O3"]}, {"n": "CSAC", "s": "Other", "r": "design/ modelling/ testing of power devices,, advanced packaging", "l": "UK", "sc": ["Device design", "Packaging"], "m": ["SiC", "GaN"]}, {"n": "CSC", "s": "Other", "r": "Compound semiconductor centre - IQE", "l": "UK", "sc": [], "m": []}, {"n": "CSConnected", "s": "Other", "r": "Compound semiconductor cluster in south Wales", "l": "UK", "sc": [], "m": []}, {"n": "CSIT", "s": "Other", "r": "Secure information technologies IKC", "l": "UK", "sc": [], "m": []}, {"n": "EDI+", "s": "Other", "r": "EDI Network+", "l": "UK", "sc": [], "m": []}, {"n": "Efutures", "s": "Other", "r": "Network+ UK electronic systems R&D community", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "Faraday", "s": "Other", "r": "Powering Britain's Battery Revolution", "l": "UK", "sc": [], "m": []}, {"n": "IEEE", "s": "Other", "r": "Institute of Electrical and Electronics Engineers", "l": "UK", "sc": [], "m": []}, {"n": "IGNITE Network+", "s": "Other", "r": "", "l": "Unknown", "sc": [], "m": []}, {"n": "iMAPs", "s": "Other", "r": "International Microelectronics Assembly & Packaging Society", "l": "UK", "sc": ["Equipment", "Packaging"], "m": ["SiC", "GaN", "Ga2O3"]}, {"n": "Make UK", "s": "Other", "r": "Trade association for UK manufacturing and engineering", "l": "UK", "sc": [], "m": []}, {"n": "Microsystems", "s": "Other", "r": "Network for microsystem community", "l": "UK", "sc": ["Epiwafer", "Device design", "Manufacturing", "Packaging"], "m": ["SiC", "GaN", "Ga2O3"]}, {"n": "MTC", "s": "Other", "r": "Manufacturing Technology Centre", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "NASPIC", "s": "Other", "r": "National Advanced Semiconductor Packaging and Integration Centre", "l": "Unknown", "sc": [], "m": []}, {"n": "NCC", "s": "Other", "r": "National Composite Centre", "l": "UK", "sc": [], "m": []}, {"n": "NEF", "s": "Other", "r": "National Epitaxy Facility", "l": "UK", "sc": ["Epiwafer"], "m": ["SiC", "GaN", "Ga2O3"]}, {"n": "Neuroware", "s": "Other", "r": "Neuromorphic computing IKC", "l": "UK", "sc": [], "m": []}, {"n": "NIMS", "s": "Other", "r": "National Manufacturing Institute Scotland", "l": "UK", "sc": ["Packaging"], "m": ["SiC", "GaN", "Ga2O3"]}, {"n": "NPL", "s": "Other", "r": "National Physical Laboratory", "l": "UK", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3"]}, {"n": "N-ZEEE", "s": "Other", "r": "Network+ for Net-Zero Enabling Electrical Engineering", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "REACT", "s": "Other", "r": "Responsible Electronics and Circular Technologies Centre", "l": "Unknown", "sc": ["Device design", "Manufacturing", "Packaging", "End user"], "m": ["SiC", "GaN", "Ga2O3"]}, {"n": "Henry Royce Institute", "s": "Other", "r": "National Institute for Advanced Materials Research and Innovation", "l": "Unknown", "sc": [], "m": []}, {"n": "Semiconductor Skills CDT", "s": "Other", "r": "", "l": "Unknown", "sc": ["Epiwafer", "Device design", "Manufacturing", "Packaging"], "m": ["SiC", "GaN", "Ga2O3"]}, {"n": "SMMT", "s": "Other", "r": "Voice of UK automotive industry", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "Supergen", "s": "Other", "r": "energy network hub and research project", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "TechUK", "s": "Other", "r": "technology trade association", "l": "UK", "sc": [], "m": []}, {"n": "Techworks", "s": "Other", "r": "deep tech industry trade association", "l": "UK", "sc": [], "m": []}, {"n": "Techworks - PEUK", "s": "Other", "r": "independent industry body for the Power Electronics sector", "l": "UK", "sc": [], "m": []}, {"n": "UK Semicon Centre", "s": "Other", "r": "", "l": "UK", "sc": [], "m": []}, {"n": "UKAEA", "s": "Other", "r": "UK Atomic Energy Authority", "l": "UK", "sc": ["Device design", "End user"], "m": ["SiC", "GaN"]}];
-const DEFAULT_DATA=DEFAULT_RAW.map(d=>({name:d.n,sector:d.s,remit:d.r,location:d.l,supplyChain:d.sc,materials:d.m}));
+const DEFAULT_RAW=[{"n": "ABB", "s": "Industry", "r": "SiC modules for mobility", "l": "UK", "sc": ["End user"], "m": ["SiC"], "st": [["Warrington", "WA4 4BT", 53.330441, -2.645906]]}, {"n": "Advanced Furnace Technology", "s": "Industry", "r": "Manufacturing bespoke high temperature process furnaces for the Material Sciences sector, including semiconductors", "l": "UK", "sc": ["Equipment"], "m": ["SiC"], "st": [["Cambridge", "CB5 8LD", 52.212199, 0.145322]]}, {"n": "Airbus", "s": "Industry", "r": "electric and hybrid planes", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"], "st": [["Bristol", "BS34 7PA", 51.510047, -2.5764], ["Broughton", "CH4 0DR", 53.172035, -2.979654], ["Stevenage", "SG1 2AS", 51.90104, -0.212025], ["Portsmouth", "PO3 5PU", 50.829865, -1.053142]]}, {"n": "ALTER", "s": "Industry", "r": "packaging and assembly", "l": "UK", "sc": ["Packaging"], "m": ["SiC", "GaN", "Ga2O3", "other"], "st": [["Livingston", "EH54 7DQ", 55.879275, -3.532678]]}, {"n": "Ampaire", "s": "Industry", "r": "hybrid-electric aircraft", "l": "USA", "sc": ["End user"], "m": ["SiC", "GaN"], "st": [["Long Beach", "CA 90808", 33.8241, -118.1103]]}, {"n": "BAE", "s": "Industry", "r": "defence", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN", "other"], "st": [["Portsmouth", "PO3 5PQ", 50.829671, -1.055872], ["Rochester", "ME1 2XX", 51.357183, 0.5031], ["Cowes", "PO31 8PF", 50.74635, -1.308261], ["London", "SW1Y 5AD", 51.505934, -0.133956]]}, {"n": "BMW", "s": "Industry", "r": "SiC for EV", "l": "UK", "sc": ["End user"], "m": ["SiC"], "st": [["Birmingham", "B46 1GB", 52.526862, -1.701144], ["Farnborough", "GU14 0FB", 51.292191, -0.800803], ["Dingolfing, Germany", "", 48.633, 12.5], ["Munich, Germany", "", 48.1375, 11.575]]}, {"n": "BOSCH", "s": "Industry", "r": "SiC devices for auto", "l": "Germany", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["SiC"], "st": [["Reutlingen, Germany", "", 48.483, 9.217], ["Renningen, Germany", "", 48.7661, 8.9347], ["Dresden, Germany", "", 51.05, 13.74], ["Roseville, USA", "", 38.7525, -121.2894]]}, {"n": "Brucker", "s": "Industry", "r": "characterisation equipment", "l": "UK", "sc": [], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Cadence", "s": "Industry", "r": "TCAD", "l": "USA", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Camvertec", "s": "Industry", "r": "specialize in AI, IT, Power Electronics and Control Systems, for sectors including automotive, healthcare, automated customer services", "l": "Unknown", "sc": [], "m": ["SiC"]}, {"n": "CGD", "s": "Industry", "r": "GaN HEMPTs with integrated gate tech, fabless. Involved in UC", "l": "UK", "sc": ["Device design"], "m": ["GaN"]}, {"n": "Clas-SiC", "s": "Industry", "r": "150 mm SiC foundry", "l": "UK", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["SiC"]}, {"n": "CRU (Exawatt)", "s": "Industry", "r": "Global leaders in market analysis, price assessments, consulting", "l": "Unknown", "sc": [], "m": ["SiC"]}, {"n": "Custom Interconnect", "s": "Industry", "r": "packaging", "l": "UK", "sc": ["Packaging"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Drive System Design", "s": "Industry", "r": "electrification and electric drive units for hybrid and electric vehicles", "l": "Unknown", "sc": ["End user"], "m": ["SiC"]}, {"n": "Dynex", "s": "Industry", "r": "SiC devices", "l": "UK", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["SiC"]}, {"n": "EDF Power Solutions", "s": "Industry", "r": "Battery Storage Solutions and Electric Vehicle (EV) Charging Solutions", "l": "Unknown", "sc": ["End user"], "m": ["SiC"]}, {"n": "Element six", "s": "Industry", "r": "diamond substrates", "l": "UK", "sc": ["Substrate"], "m": ["other"]}, {"n": "EMPEL Systems", "s": "Industry", "r": "State-of-the-art integrated electric motor and power electronics modules for the automotive, aerospace, industrial machine, robotic and green-tech markets", "l": "Unknown", "sc": ["End user"], "m": ["SiC"]}, {"n": "GE aerospace", "s": "Industry", "r": "SiC modules for hybrid aircraft", "l": "UK", "sc": ["End user"], "m": ["SiC"]}, {"n": "GE Vernova", "s": "Industry", "r": "Grid solutions and power conversion, SiC for high power DC-DC links", "l": "UK", "sc": ["End user"], "m": ["SiC"]}, {"n": "GKN", "s": "Industry", "r": "electric aircraft and space", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "Hitachi", "s": "Industry", "r": "SiC devices", "l": "Switzerland", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["SiC", "GaN"]}, {"n": "IceMoS Technology", "s": "Industry", "r": "Customised, cost effective and high performance Superjunction MOSFETs, MEMS solutions and Advanced Engineering Substrates, including SiC for", "l": "Unknown", "sc": ["Epiwafer", "Device design", "Manufacturing", "Packaging"], "m": ["SiC"]}, {"n": "INEX Microtechnology", "s": "Industry", "r": "Full-service compound semiconductor development and fabrication company", "l": "Unknown", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["SiC"]}, {"n": "Inseto", "s": "Industry", "r": "equipment, packaging and wafers", "l": "UK", "sc": ["Equipment", "Substrate", "Packaging"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "ipTest", "s": "Industry", "r": "test equipment, Warwick have equipment", "l": "UK", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "IQE", "s": "Industry", "r": "GaN epi", "l": "UK", "sc": ["Epiwafer"], "m": ["GaN"]}, {"n": "JLR", "s": "Industry", "r": "SiC for EV", "l": "UK", "sc": ["End user"], "m": ["SiC"]}, {"n": "KLA", "s": "Industry", "r": "Plasma processing. PhD student with REWIRE", "l": "UK", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Kuasa Semi", "s": "Industry", "r": "Innovative, intuitive semiconductor design solutions, specifically aimed at WBGOpen call project with REWIRE - VESPA", "l": "UK", "sc": ["Equipment"], "m": ["SiC", "GaN"]}, {"n": "Littlefuse", "s": "Industry", "r": "SiC device", "l": "UK", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["SiC", "GaN"]}, {"n": "MBDA", "s": "Industry", "r": "Defence and RF", "l": "UK", "sc": ["End user"], "m": ["GaN"]}, {"n": "McLaren", "s": "Industry", "r": "SiC for EV", "l": "UK", "sc": ["End user"], "m": ["SiC"]}, {"n": "Morgan", "s": "Industry", "r": "ceramic and carbon materials for packaging and growth", "l": "UK", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Morgan Advanced Materials", "s": "Industry", "r": "ceramic components and electrical and thermal management", "l": "Unknown", "sc": ["Packaging"], "m": ["SiC"]}, {"n": "Nascent Semiconductor", "s": "Industry", "r": "LECTRONIC COMPONENTS FOR EXTREME ENVIRONMENTS, Quantum SiC for Extreme Application Clock Technology (example project)", "l": "Unknown", "sc": ["Device design", "Manufacturing"], "m": ["SiC"]}, {"n": "National Grid", "s": "Industry", "r": "grid modernization and the integration of renewable energy sources", "l": "Unknown", "sc": ["End user"], "m": ["SiC"]}, {"n": "Nexperia", "s": "Industry", "r": "GaN and SiC devices", "l": "UK", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["SiC", "GaN"]}, {"n": "NextGo Epi", "s": "Industry", "r": "Ga2O3 epi", "l": "Germany", "sc": ["Epiwafer"], "m": ["Ga2O3"]}, {"n": "Nissan", "s": "Industry", "r": "SiC for EV, have reliability project with Bristol", "l": "UK", "sc": ["End user"], "m": ["SiC"]}, {"n": "Noval Crystals", "s": "Industry", "r": "Ga2O3 epi", "l": "Japan", "sc": ["Epiwafer"], "m": ["Ga2O3"]}, {"n": "OIPT", "s": "Industry", "r": "Plasma processing and analysis kit, projects with REWIRE", "l": "UK", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "onsemi", "s": "Industry", "r": "SiC and GaN devices, incl 1200 V GaN", "l": "USA", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["SiC", "GaN"]}, {"n": "Orbray", "s": "Industry", "r": "diamond and Ga2O3 substrates", "l": "Japan", "sc": ["Substrate"], "m": ["Ga2O3", "other"]}, {"n": "pECM Systems", "s": "Industry", "r": "Electro Chemical Machine (ECM) and Electro Discharge Machine (EDM) manufacturing (specialism in SiC)", "l": "Unknown", "sc": ["End user"], "m": ["SiC"]}, {"n": "Power Matrix", "s": "Industry", "r": "efficient compact DC-DC power supplies", "l": "UK", "sc": ["End user"], "m": ["GaN"]}, {"n": "QFI", "s": "Industry", "r": "AF, microscopes, temp measurement", "l": "USA", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Radtest", "s": "Industry", "r": "radiation testing", "l": "UK", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "RAM Innovations", "s": "Industry", "r": "embedded die packaging", "l": "UK", "sc": ["Packaging"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "RENA", "s": "Industry", "r": "wet processing", "l": "UK", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Renesas", "s": "Industry", "r": "Produces variety of GaN devices including 650 V and 700 V GaN FETs, GaN-based power devices and solutions, Interested in 600 V SiC Schottky diode and transistor SiC devices", "l": "Japan", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["GaN"]}, {"n": "Renishaw", "s": "Industry", "r": "measurement equipment", "l": "UK", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Ricardo", "s": "Industry", "r": "vehicle electrification and powertrain development", "l": "Unknown", "sc": ["End user"], "m": ["SiC"]}, {"n": "Rohm", "s": "Industry", "r": "GaN and SiC devices", "l": "Unknown", "sc": ["Device design", "Manufacturing"], "m": ["SiC", "GaN"]}, {"n": "Semikron Danfoss", "s": "Industry", "r": "Semiconductor devices, power modules, stacks and systems, make SiC containing modules (not devices)", "l": "Germany", "sc": ["End user"], "m": ["SiC"]}, {"n": "Siemens", "s": "Industry", "r": "mobility, industry drives and motors", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "Silvaco", "s": "Industry", "r": "Technology computer aided design (TCAD) software and SPICE (compact) models", "l": "USA", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Sumitomo", "s": "Industry", "r": "GaN/AlN epi wafer", "l": "Japan", "sc": ["Substrate", "Epiwafer"], "m": ["GaN"]}, {"n": "Sora Aviation", "s": "Industry", "r": "small electric planes", "l": "UK", "sc": ["End user"], "m": ["SiC"]}, {"n": "ST Micro", "s": "Industry", "r": "SiC devices", "l": "Italy", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["SiC"]}, {"n": "tae power solutions", "s": "Industry", "r": "auto", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "Toshiba", "s": "Industry", "r": "SiC devices and modules", "l": "research in UK", "sc": ["Device design", "Manufacturing", "Packaging", "End user"], "m": ["SiC"]}, {"n": "Tribus-D", "s": "Industry", "r": "New power package development for SiC", "l": "Unknown", "sc": ["Packaging"], "m": ["SiC"]}, {"n": "TT Electronics", "s": "Industry", "r": "power electronics, specifically power modules and power supplies", "l": "Unknown", "sc": ["End user"], "m": ["SiC"]}, {"n": "TTPi", "s": "Industry", "r": "Transforming electronics for sustainable transport and energy systems. DC-DC converters", "l": "UK", "sc": ["Packaging", "End user"], "m": ["SiC", "GaN"]}, {"n": "ULTEC", "s": "Industry", "r": "AlN wafer/epi", "l": "Japan", "sc": ["Substrate", "Epiwafer"], "m": ["other"]}, {"n": "Vertical Aerospace", "s": "Industry", "r": "small electric planes", "l": "UK", "sc": ["End user"], "m": ["SiC"]}, {"n": "Vishay", "s": "Industry", "r": "SiC and GaN devices", "l": "UK", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["SiC", "GaN"]}, {"n": "Wolfspeed", "s": "Industry", "r": "SiC wafers", "l": "USA", "sc": ["Substrate", "Epiwafer", "Device design", "Manufacturing"], "m": ["SiC"]}, {"n": "YASA", "s": "Industry", "r": "axial-flux motor technology", "l": "Unknown", "sc": ["End user"], "m": ["SiC"]}, {"n": "ZAP Power", "s": "Industry", "r": "cryo DC-DC power for datacentre", "l": "UK", "sc": ["Device design", "Manufacturing", "Packaging", "End user"], "m": ["GaN", "other"]}, {"n": "Zeiss", "s": "Industry", "r": "Microscopy systems, FA and device reliability", "l": "UK", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "DIAMFAB", "s": "Industry", "r": "diamond substrates", "l": "France", "sc": ["Substrate", "Epiwafer"], "m": ["other"]}, {"n": "AKASH Systems", "s": "Industry", "r": "diamond cooling", "l": "USA", "sc": ["Substrate", "Packaging"], "m": ["other"], "st": [["California", "", 36.78, -119.42]]}, {"n": "Space Forge", "s": "Industry", "r": "growing semicon in space, satalites, diamond cooling", "l": "UK", "sc": ["Equipment", "Substrate", "Packaging"], "m": ["other"], "st": [["Cardiff", "", 51.48, -3.1769]]}, {"n": "Birmingham City University", "s": "Academic", "r": "Solar PV system, energy harvesting technology, energy storage and power electronics areas", "l": "UK", "sc": [], "m": []}, {"n": "Coventry University", "s": "Academic", "r": "Next generation of electrified propulsion systems for the automotive, aerospace, marine and rail industries, GaN power electronics - modelling and simulation", "l": "UK", "sc": ["Device design", "End user"], "m": ["SiC", "GaN"], "st": [["Coventry", "CV1 5FB", 52.408534, -1.50509]]}, {"n": "Heriot Watt University", "s": "Academic", "r": "SiC quantum materials and devices", "l": "UK", "sc": [], "m": ["SiC"], "st": [["Edinburgh", "EH14 4AS", 55.90938, -3.320681]]}, {"n": "Imperial College London", "s": "Academic", "r": "Design and control of power electronic converters, HVDC transmission and new forms of low voltage power distribution, Power electronics circuit and converter designs for HVDC", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"], "st": [["London", "SW7 2AZ", 51.499334, -0.179178]]}, {"n": "Loughborough University", "s": "Academic", "r": "Power electronics as it relates to the electricity grid, Switched capacitor converters for HVDC applications", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"], "st": [["Loughborough", "LE11 3GB", 52.759817, -1.246939]]}, {"n": "Newcastle University", "s": "Academic", "r": "Silicon Carbide MOSFETs, Interface engineering and heterogeneous integration, Atomic Layer Interface Engineering, Packaging?", "l": "UK", "sc": ["Device design", "Manufacturing"], "m": ["SiC"], "st": [["Newcastle", "NE1 7RU", 54.980327, -1.615727]]}, {"n": "Northumbria University Newcastle", "s": "Academic", "r": "Electrical power conversion, Control algorithms for electric vehicles and renewable energy networks, Health monitoring and condition control of next-generation wide bandgap (WBG) power modules, Power electronics for enabling the electrification of transportation", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"], "st": [["Newcastle", "NE1 8ST", 54.976634, -1.607451]]}, {"n": "Queen Mary's University London", "s": "Academic", "r": "Power and control system engineering, Advanced control and condition monitoring technologies for SiC-based power electronics", "l": "UK", "sc": ["End user"], "m": ["SiC"], "st": [["London", "E1 4NS", 51.524637, -0.040683]]}, {"n": "UCL", "s": "Academic", "r": "Utilising diamond for novel electronic and sensing applications, Radiation-hardened and extreme environment systems", "l": "UK", "sc": ["Device design", "Manufacturing"], "m": ["other"], "st": [["London", "WC1E 7JE", 51.522974, -0.132192]]}, {"n": "University of Aberdeen", "s": "Academic", "r": "The centre provides platform for research activity which spreads over the areas of power systems, power electronics and control engineering.", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"], "st": [["Aberdeen", "AB24 3FX", 57.164841, -2.100237]]}, {"n": "University of Bath", "s": "Academic", "r": "AI for power electronics, Advanced propulsion systems, DC circuit breakers, Cryogenic power electronics", "l": "UK", "sc": ["Device design", "Manufacturing", "End user"], "m": ["SiC", "GaN", "other"], "st": [["Bath", "BA2 7AY", 51.379324, -2.327157]]}, {"n": "University of Bristol", "s": "Academic", "r": "Device thermography and reliability, GaN and Ga2O3 power devices, novel material devices (diamond, BN), Advanced gate driving, GaN power electronics and reliability, high-efficiency power electronics, grid-level power electronics", "l": "UK", "sc": ["Epiwafer", "Device design", "Manufacturing", "Packaging", "End user"], "m": ["GaN", "Ga2O3", "other"], "st": [["Bristol", "BS8 1TR", 51.456769, -2.601952]]}, {"n": "University of Cambridge", "s": "Academic", "r": "GaN devices, Power electronics for multiscale power and energy conversion (GaN and SiC)", "l": "UK", "sc": ["Epiwafer", "Device design", "Manufacturing", "Packaging", "End user"], "m": ["SiC", "GaN"], "st": [["Cambridge", "CB3 0FS", 52.210577, 0.085817]]}, {"n": "University of Cardiff", "s": "Academic", "r": "Compound semiconductor manufacturing, Compound semiconductor high-speed electronic devices, Diamond growth", "l": "UK", "sc": ["Epiwafer", "Device design", "Manufacturing"], "m": ["GaN"], "st": [["Cardiff", "CF24 4HQ", 51.493078, -3.184173]]}, {"n": "University of Durham", "s": "Academic", "r": "Electronic and electrical systems for deployment in extreme environments, Renewable Energy Integration, Power Electronics (FACTS/HVDC), Reliability of electrical machines and drives, Smart Grid and Smart Energy", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"], "st": [["Durham", "DH1 3LE", 54.768122, -1.571884]]}, {"n": "University of Edinburgh", "s": "Academic", "r": "Energy storage and power networks", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"], "st": [["Edinburgh", "EH9 3JL", 55.922445, -3.172446]]}, {"n": "University of Glasgow", "s": "Academic", "r": "Device modelling and circuit simulation, Wide Bandgap and Ultra-Wide Bandgap materials including GaN, AlGaN, Ga2O3, cubic boron-nitride and diamond, High-frequency electronics, Gallium nitride (GaN) electronics", "l": "UK", "sc": ["Device design", "Manufacturing"], "m": ["GaN", "Ga2O3", "other"], "st": [["Glasgow", "G12 8QQ", 55.871746, -4.288345]]}, {"n": "University of Greenwich", "s": "Academic", "r": "Developing modelling techniques to support the design of complex engineering components and systems and reliability", "l": "UK", "sc": ["Equipment", "End user"], "m": [], "st": [["London", "ME4 4TB", 51.397232, 0.539417]]}, {"n": "University of Manchester", "s": "Academic", "r": "Optical spectroscopy of electronic materials, Development of spectroscopic techniques and instrumentation, Voltage-source HVDC, Power dense converters", "l": "UK", "sc": ["Epiwafer", "Device design", "Manufacturing", "End user"], "m": ["SiC", "GaN"], "st": [["Manchester", "M13 9PL", 53.466926, -2.233578]]}, {"n": "University of Nottingham", "s": "Academic", "r": "Power Electronics and Machines and Drives", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"], "st": [["Nottingham", "NG7 2RD", 52.940393, -1.189663]]}, {"n": "University of Oxford", "s": "Academic", "r": "Broad area of circuits, systems and control in power electronics", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"], "st": [["Oxford", "OX1 3PJ", 51.760278, -1.259869]]}, {"n": "University of Sheffield", "s": "Academic", "r": "Wide band gap power semiconductor devices and technologies, Power semiconductor devices and technologies, Semiconductor Epitaxy (MBE), Epitaxy of novel semiconductors materials and devices, Nitride-based semiconductors and their applications", "l": "UK", "sc": ["Epiwafer", "Device design", "Manufacturing", "End user"], "m": ["GaN", "other"], "st": [["Sheffield", "S10 2TN", 53.381381, -1.48853]]}, {"n": "University of Southampton", "s": "Academic", "r": "SiC photonics, novel power electronic converters for interfacing batteries", "l": "UK", "sc": [], "m": ["SiC", "other"], "st": [["Southampton", "SO17 1BJ", 50.934091, -1.395705]]}, {"n": "University of Strathclyde", "s": "Academic", "r": "Wide bandgap semiconductors for UV optoelectronic devices, Semiconductor physics on group III nitride semiconductors, High temperature Silicon-Carbide, Packaging", "l": "UK", "sc": ["Device design", "Manufacturing", "Packaging", "End user"], "m": ["SiC", "GaN", "Ga2O3", "other"], "st": [["Glasgow", "G1 1XW", 55.861286, -4.24634]]}, {"n": "University of Swansea", "s": "Academic", "r": "Wide bandgap electronic materials (silicon carbide, gallium oxide and gallium nitride) for energy-efficient applications, Simulation and modelling of semiconductor devices, Advanced power electronics and applications; Renewable energy and grid control systems; HIL and rapid control prototyping; Power instrumentation and circuits for wide bandgap semiconductor devices", "l": "UK", "sc": ["Epiwafer", "Device design", "Manufacturing", "Packaging", "End user"], "m": ["SiC", "GaN", "Ga2O3", "other"], "st": [["Swansea", "SA1 8QQ", 51.620565, -3.880623]]}, {"n": "University of Warwick", "s": "Academic", "r": "SiC, Power electronics, power semiconductor devices and applications in power systems, and power conversion", "l": "UK", "sc": ["Epiwafer", "Device design", "Manufacturing", "Packaging", "End user"], "m": ["SiC"], "st": [["Warwick", "CV4 7AL", 52.385682, -1.56482]]}, {"n": "University of York", "s": "Academic", "r": "Renewable energy, power electronics, microelectronics and materials", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"], "st": [["York", "YO10 5DD", 53.948437, -1.053553]]}, {"n": "Buckinghamshire New University", "s": "Academic", "r": "Electronics packging, interconnection materials, manufacturing, reliability engineering, AI-enabled design", "l": "UK", "sc": ["Device design", "Manufacturing", "Packaging"], "m": [], "st": [["High Wycombe", "HP11 2JZ", 51.627509, -0.752036]]}, {"n": "University of Arkansas", "s": "Academic", "r": "Commercial and R&D foundry, initally SiC, GaN coming soon", "l": "USA", "sc": ["Epiwafer", "Device design", "Manufacturing", "Packaging"], "m": ["SiC", "GaN"], "st": [["Fayetteville", "AR 72701", 36.052, -94.1534]]}, {"n": "APC", "s": "Other", "r": "Advanced Propulsion Centre", "l": "UK", "sc": [], "m": []}, {"n": "APRIL AI Hub", "s": "Other", "r": "Transforming the electronics, industry through AI-research", "l": "UK", "sc": ["Device design", "Manufacturing", "Packaging", "End user"], "m": ["GaN", "other"]}, {"n": "Bragg Centre for Materials Research", "s": "Other", "r": "Driving materials innovation, connects materials experts, world-class facilities, expertise, funding. Academia and industry.", "l": "Unknown", "sc": [], "m": []}, {"n": "CHIMES", "s": "Other", "r": "Heterogeneous integration IKC", "l": "UK", "sc": [], "m": []}, {"n": "Compound Semi Manufacturing Hub", "s": "Other", "r": "Mainly photonics", "l": "UK", "sc": ["Device design", "Manufacturing", "Packaging"], "m": ["GaN"]}, {"n": "C-PIC (CORNERSTONE)", "s": "Other", "r": "Si photonics IKC", "l": "UK", "sc": [], "m": []}, {"n": "CANUTE", "s": "Other", "r": "UK-Canada Network+ for ECRs working on semiconductors", "l": "Unknown", "sc": [], "m": []}, {"n": "CRAFT", "s": "Other", "r": "Centre for Research in All-Electric Future Technologies", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "CSAC", "s": "Other", "r": "design/ modelling/ testing of power devices,, advanced packaging", "l": "UK", "sc": ["Device design", "Packaging"], "m": ["SiC", "GaN"]}, {"n": "CSC", "s": "Other", "r": "Compound semiconductor centre - IQE", "l": "UK", "sc": [], "m": []}, {"n": "CSConnected", "s": "Other", "r": "Compound semiconductor cluster in south Wales", "l": "UK", "sc": [], "m": []}, {"n": "CSIT", "s": "Other", "r": "Secure information technologies IKC", "l": "UK", "sc": [], "m": []}, {"n": "EDI+", "s": "Other", "r": "EDI Network+", "l": "UK", "sc": [], "m": []}, {"n": "Efutures", "s": "Other", "r": "Network+ UK electronic systems R&D community", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "Faraday", "s": "Other", "r": "Powering Britain's Battery Revolution", "l": "UK", "sc": [], "m": []}, {"n": "IEEE", "s": "Other", "r": "Institute of Electrical and Electronics Engineers", "l": "UK", "sc": [], "m": []}, {"n": "iMAPs", "s": "Other", "r": "International Microelectronics Assembly & Packaging Society", "l": "UK", "sc": ["Equipment", "Packaging"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Make UK", "s": "Other", "r": "Trade association for UK manufacturing and engineering", "l": "UK", "sc": [], "m": []}, {"n": "Microsystems", "s": "Other", "r": "Network for microsystem community", "l": "UK", "sc": ["Epiwafer", "Device design", "Manufacturing", "Packaging"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "MTC", "s": "Other", "r": "Manufacturing Technology Centre", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "NASPIC", "s": "Other", "r": "National Advanced Semiconductor Packaging and Integration Centre", "l": "Unknown", "sc": [], "m": []}, {"n": "NCC", "s": "Other", "r": "National Composite Centre", "l": "UK", "sc": [], "m": []}, {"n": "NEF", "s": "Other", "r": "National Epitaxy Facility", "l": "UK", "sc": ["Epiwafer"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Neuroware", "s": "Other", "r": "Neuromorphic computing IKC", "l": "UK", "sc": [], "m": []}, {"n": "NIMS", "s": "Other", "r": "National Manufacturing Institute Scotland", "l": "UK", "sc": ["Packaging"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "NPL", "s": "Other", "r": "National Physical Laboratory", "l": "UK", "sc": ["Equipment"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "N-ZEEE", "s": "Other", "r": "Network+ for Net-Zero Enabling Electrical Engineering", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "REACT", "s": "Other", "r": "Responsible Electronics and Circular Technologies Centre", "l": "Unknown", "sc": ["Device design", "Manufacturing", "Packaging", "End user"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "Henry Royce Institute", "s": "Other", "r": "National Institute for Advanced Materials Research and Innovation", "l": "Unknown", "sc": [], "m": []}, {"n": "Semiconductor Skills CDT", "s": "Other", "r": "", "l": "Unknown", "sc": ["Epiwafer", "Device design", "Manufacturing", "Packaging"], "m": ["SiC", "GaN", "Ga2O3", "other"]}, {"n": "SMMT", "s": "Other", "r": "Voice of UK automotive industry", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "Supergen", "s": "Other", "r": "energy network hub and research project", "l": "UK", "sc": ["End user"], "m": ["SiC", "GaN"]}, {"n": "TechUK", "s": "Other", "r": "technology trade association", "l": "UK", "sc": [], "m": []}, {"n": "Techworks", "s": "Other", "r": "deep tech industry trade association", "l": "UK", "sc": [], "m": []}, {"n": "Techworks - PEUK", "s": "Other", "r": "independent industry body for the Power Electronics sector", "l": "UK", "sc": [], "m": []}, {"n": "UK Semicon Centre", "s": "Other", "r": "", "l": "UK", "sc": [], "m": []}, {"n": "UKAEA", "s": "Other", "r": "UK Atomic Energy Authority", "l": "UK", "sc": ["Device design", "End user"], "m": ["SiC", "GaN"]}, {"n": "FAST engine (Frontiers of Advanced Semiconductor Technology)", "s": "Other", "r": "", "l": "USA", "sc": [], "m": [], "st": [["Oregon", "", 43.8, -120.55]]}, {"n": "Resilient Energy Technology and Infrastructure (RETI) Engine", "s": "Other", "r": "", "l": "USA", "sc": [], "m": []}, {"n": "MUSiC Mutli-user Silicon Carbide Research and Fabrication Facility", "s": "Other", "r": "", "l": "USA", "sc": ["Epiwafer", "Device design", "Manufacturing", "Packaging"], "m": ["SiC"], "st": [["Arkansas", "", 34.8, -92.2]]}];
+/* Built-in dataset: the REWIRE team's September 2026 landscape review (146 organisations).
+   st = sites: [city, postcode, latitude, longitude]. Coordinates for UK postcodes come from
+   postcodes.io (verified 22 Sept 2026); US ZIP from zippopotam.us; US states are approximate
+   state centres; five overseas cities from the English Wikipedia infobox; Bosch's sites and Ampaire's country as corrected by Katie by email on 25 Sept 2026. Northumbria's postcode is NE1 8ST (the sheet's NW1 8ST does not exist). */
+const DEFAULT_DATA=DEFAULT_RAW.map(d=>({name:d.n,sector:d.s,remit:d.r,location:d.l,supplyChain:d.sc,materials:d.m,sites:(d.st||[]).map(x=>({city:x[0]||"",postcode:x[1]||"",lat:x.length>3?x[2]:null,lng:x.length>3?x[3]:null}))}));
 
 const SC=["Equipment","Substrate","Epiwafer","Device design","Manufacturing","Packaging","End user"];
 const MATS=["SiC","GaN","Ga2O3","other"];
@@ -40,7 +52,7 @@ const ML={SiC:"SiC",GaN:"GaN",Ga2O3:"Ga₂O₃",other:"Other (Diamond, BN, AlN)"
 const MS={SiC:"SiC",GaN:"GaN",Ga2O3:"Ga₂O₃",other:"Other"};
 const SECTS=["Industry","Academic","Other"];
 const SECT_LABELS={Industry:"Industry",Academic:"Academic",Other:"Supporting Bodies"};
-const TABS=[{id:"overview",label:"Overview"},{id:"explorer",label:"Explorer"},{id:"gaps",label:"Gap Analysis"},{id:"chain",label:"Supply Chain"},{id:"data",label:"⚙ Data"}];
+const TABS=[{id:"overview",label:"Overview"},{id:"explorer",label:"Explorer"},{id:"gaps",label:"Gap Analysis"},{id:"chain",label:"Supply Chain"},{id:"map",label:"Map"},{id:"data",label:"⚙ Data"}];
 const C={
   teal:"#00838F",td:"#005662",tl:"#4fb3bf",tg:"rgba(0,131,143,0.05)",tb:"rgba(0,131,143,0.12)",
   bg:"#f5f7f9",card:"#fff",sh:"0 1px 3px rgba(0,40,60,0.06),0 1px 2px rgba(0,40,60,0.03)",
@@ -53,26 +65,217 @@ const C={
 const ft="'Segoe UI',-apple-system,sans-serif";
 const mn="'Cascadia Code','JetBrains Mono','Fira Code',monospace";
 
-const CSV_HEADERS=["Organisation","Sector","Remit","Location","Equipment","Substrate","Epiwafer","Device design","Manufacturing","Packaging","End user","SiC","GaN","Ga2O3","other"];
+const CSV_HEADERS=["Organisation","Sector","Remit","Location","Equipment","Substrate","Epiwafer","Device design","Manufacturing","Packaging","End user","SiC","GaN","Ga2O3","other","City","Postcode","Latitude","Longitude"];
 
+/* ── Geography (change 7) ──
+   location  = country label used everywhere ("UK", "USA", "Germany", "Unknown")
+   sites     = [{city, postcode, lat, lng}] — one entry per site; several sites are written in the
+               CSV as "City A; City B" / "PC A; PC B" (same order) in the City / Postcode columns.
+   Approximate country and US-state centres are used only when no city or postcode is known. */
+const COUNTRY_ALIASES={"uk":"UK","u.k.":"UK","united kingdom":"UK","great britain":"UK","britain":"UK","england":"UK","scotland":"UK","wales":"UK","northern ireland":"UK","usa":"USA","us":"USA","u.s.":"USA","u.s.a.":"USA","united states":"USA","united states of america":"USA","america":"USA","unknown":"Unknown","n/a":"Unknown","-":"Unknown"};
+const COUNTRY_CENTRE={"UK":[54.3,-2.6],"USA":[39.8,-98.6],"Germany":[51.2,10.4],"Japan":[36.2,138.3],"Switzerland":[46.8,8.2],"Italy":[42.5,12.5],"France":[46.6,2.2],"Netherlands":[52.2,5.3],"Belgium":[50.6,4.6],"Ireland":[53.4,-8.0],"Spain":[40.2,-3.7],"Portugal":[39.6,-8.0],"Sweden":[62.0,15.0],"Norway":[64.0,11.0],"Finland":[64.0,26.0],"Denmark":[56.0,10.0],"Austria":[47.6,14.1],"Poland":[52.0,19.4],"Czech Republic":[49.8,15.5],"Canada":[56.1,-106.3],"China":[35.9,104.2],"South Korea":[36.5,127.9],"Taiwan":[23.7,121.0],"India":[21.0,78.0],"Singapore":[1.35,103.8],"Australia":[-25.3,133.8],"Israel":[31.0,34.9]};
+const COUNTRY_ISO={"UK":"gb","USA":"us","Germany":"de","Japan":"jp","Switzerland":"ch","Italy":"it","France":"fr","Netherlands":"nl","Belgium":"be","Ireland":"ie","Spain":"es","Portugal":"pt","Sweden":"se","Norway":"no","Finland":"fi","Denmark":"dk","Austria":"at","Poland":"pl","Czech Republic":"cz","Canada":"ca","China":"cn","South Korea":"kr","Taiwan":"tw","India":"in","Singapore":"sg","Australia":"au","Israel":"il"};
+const US_STATE_CENTRE={"Alabama":[32.8,-86.8],"Arizona":[34.3,-111.7],"Arkansas":[34.8,-92.2],"California":[36.8,-119.4],"Colorado":[39.0,-105.5],"Connecticut":[41.6,-72.7],"Florida":[28.6,-82.4],"Georgia":[32.6,-83.4],"Idaho":[44.4,-114.6],"Illinois":[40.0,-89.2],"Indiana":[39.9,-86.3],"Massachusetts":[42.3,-71.8],"Michigan":[44.3,-85.4],"Minnesota":[46.3,-94.3],"New Jersey":[40.2,-74.7],"New Mexico":[34.4,-106.1],"New York":[42.9,-75.5],"North Carolina":[35.6,-79.4],"Ohio":[40.3,-82.8],"Oregon":[43.8,-120.6],"Pennsylvania":[40.9,-77.8],"Texas":[31.5,-99.3],"Utah":[39.3,-111.7],"Virginia":[37.5,-78.9],"Washington":[47.4,-120.5],"Wisconsin":[44.6,-89.9]};
+const UK_PC_RE=/^[A-Za-z]{1,2}\d[A-Za-z\d]?\s*\d[A-Za-z]{2}$/;
+const US_ZIP_RE=/^(?:[A-Za-z]{2}\s+)?(\d{5})(?:-\d{4})?$/;
+const isUKPostcode=p=>UK_PC_RE.test((p||"").trim());
+const normPostcode=p=>{const q=(p||"").toUpperCase().replace(/\s+/g,"");return isUKPostcode(q)?q.slice(0,-3)+" "+q.slice(-3):(p||"").trim();};
+/* "x" → UK (Katie's "UK?" column); "Cardiff, UK" → UK + place Cardiff; aliases → canonical label */
+function normCountry(raw){
+  const v=(raw||"").toString().trim();
+  if(!v)return{country:"Unknown",place:""};
+  const low=v.toLowerCase();
+  if(low==="x"||low==="yes"||low==="y"||low==="1")return{country:"UK",place:""};
+  if(COUNTRY_ALIASES[low])return{country:COUNTRY_ALIASES[low],place:""};
+  const parts=v.split(",").map(x=>x.trim()).filter(Boolean);
+  if(parts.length>=2){const last=parts[parts.length-1];const c=COUNTRY_ALIASES[last.toLowerCase()]||last;return{country:c,place:parts.slice(0,-1).join(", ")};}
+  return{country:v,place:""};
+}
+const splitList=v=>(v||"").toString().split(";").map(x=>x.trim());
 function parseCSVToData(csvText){
   const result=Papa.parse(csvText,{header:true,skipEmptyLines:true,transformHeader:h=>h.trim()});
   const rows=result.data;if(rows.length===0)throw new Error("CSV is empty");
   const cols=Object.keys(rows[0]);
-  if(!cols.some(c=>c.toLowerCase()==="organisation"))throw new Error("Missing column: Organisation");
+  if(!cols.some(c=>c.toLowerCase()==="organisation"||c.toLowerCase()==="university"))throw new Error("Missing column: Organisation");
   return rows.map(row=>{
-    const norm=s=>s.toLowerCase().replace(/[\s/]+/g,"");
+    const norm=s=>s.toLowerCase().replace(/[\s/?]+/g,"");
     const get=key=>{const f=Object.keys(row).find(k=>norm(k)===norm(key));return f?(row[f]||"").toString().trim():"";};
     const fuzzyGet=keys=>{for(const k of keys){const v=get(k);if(v)return v;}return"";};
     const marked=val=>{if(!val)return false;const v=val.toString().trim().toLowerCase();return v==="x"||v==="yes"||v==="1"||v.length>1;};
     const sector=get("Sector")||"Other";
     const sectorAliases={"supporting bodies":"Other","supporting body":"Other","other organisation":"Other","other organisations":"Other","other":"Other"};
     const validSector=sectorAliases[sector.toLowerCase().trim()]||SECTS.find(s=>s.toLowerCase()===sector.toLowerCase())||"Other";
-    return{name:get("Organisation")||"Unnamed",sector:validSector,remit:fuzzyGet(["Remit","Remit/Specialisms","Remit / Specialisms"]),location:get("Location")||"Unknown",supplyChain:SC.filter(s=>marked(get(s))),materials:MATS.filter(m=>marked(get(m)))};
+    /* location: Location / Country / UK? / Significant UK base? all accepted */
+    const loc=normCountry(fuzzyGet(["Location","Country","UK?","Significant UK base?"]));
+    const pcs=splitList(fuzzyGet(["Postcode","Post code","Postal code","ZIP"])),lats=splitList(get("Latitude")),lngs=splitList(get("Longitude"));
+    let cities=splitList(get("City")),alignCheck=false;
+    /* a comma used as the separator instead of a semicolon: accept it when that makes the city and postcode counts agree */
+    if(pcs.filter(Boolean).length>1&&cities.filter(Boolean).length!==pcs.filter(Boolean).length){const alt=get("City").split(/[;,]/).map(x=>x.trim()).filter(Boolean);if(alt.length===pcs.filter(Boolean).length)cities=alt;}
+    cities=cities.filter((c,i)=>c||i<pcs.length);
+    /* Pair postcodes with cities by format when the positions cannot be trusted (fewer postcodes than
+       cities, or a pair that conflicts: a UK postcode against "Munich, Germany", a US ZIP against a UK
+       entry). A UK postcode goes to an entry naming the UK, else to one naming no country; a US
+       "CA 95661" to an entry naming the USA, else to one naming no country. When several entries
+       qualify the row is flagged and settled by distance after the coordinates are looked up. */
+    const suffix=c=>{const i=c.lastIndexOf(",");if(i<0)return"";const t=c.slice(i+1).trim().toLowerCase();return COUNTRY_ALIASES[t]||t;};
+    const wants=pc=>isUKPostcode(pc)?"UK":/^[A-Za-z]{2}\s+\d{5}/.test(pc)?"USA":null;
+    const conflicts=(pc,c)=>{const w=wants(pc),sfx=suffix(c);return!!w&&sfx!==""&&sfx!==w;};
+    const nPc=pcs.filter(Boolean).length,nCity=cities.filter(Boolean).length;
+    if(nPc>0&&(nPc<nCity||pcs.some((pc,i)=>pc&&cities[i]&&conflicts(pc,cities[i])))){
+      const aligned=cities.map(()=>"");let j=0;
+      const pick=pred=>{const free=cities.map((x,i)=>i).filter(i=>!aligned[i]&&pred(cities[i]));if(!free.length)return{k:-1,n:0};return{k:free.find(i=>i>=j)??free[0],n:free.length};};
+      for(const pc of pcs.filter(Boolean)){
+        const c=wants(pc);let r={k:-1,n:0};
+        if(c){r=pick(x=>suffix(x)===c);if(r.k<0){r=pick(x=>suffix(x)==="");if(r.n>1)alignCheck=true;}}
+        if(r.k<0)r=pick(()=>true);
+        if(r.k<0)break;aligned[r.k]=pc;j=r.k+1;
+      }
+      pcs.length=0;aligned.forEach(x=>pcs.push(x));
+    }
+    const n=Math.max(cities.filter(Boolean).length?cities.length:0,pcs.filter(Boolean).length?pcs.length:0,lats.filter(Boolean).length?lats.length:0);
+    const sites=[];
+    for(let i=0;i<n;i++){
+      const city=cities[i]||"",postcode=normPostcode(pcs[i]||"");
+      const lat=parseFloat(lats[i]),lng=parseFloat(lngs[i]);
+      const ok=Number.isFinite(lat)&&Number.isFinite(lng)&&Math.abs(lat)<=90&&Math.abs(lng)<=180;
+      if(city||postcode||ok)sites.push({city,postcode,lat:ok?lat:null,lng:ok?lng:null});
+    }
+    if(sites.length===0&&loc.place)sites.push({city:loc.place,postcode:"",lat:null,lng:null});
+    let location=loc.country;
+    if(location==="Unknown"&&sites.some(s=>isUKPostcode(s.postcode)))location="UK";
+    const rec={name:get("Organisation")||get("University")||"Unnamed",sector:validSector,remit:fuzzyGet(["Remit","Remit/Specialisms","Remit / Specialisms"]),location,supplyChain:SC.filter(s=>marked(get(s))),materials:MATS.filter(m=>marked(get(m))||(m==="other"&&marked(get("other (power)")))),sites};
+    if(alignCheck)rec.alignCheck=true;
+    return rec;
   }).filter(d=>d.name!=="Unnamed"&&d.name!=="Organisation");
 }
-function dataToCSV(data){return Papa.unparse(data.map(d=>{const row={Organisation:d.name,Sector:SECT_LABELS[d.sector]||d.sector,Remit:d.remit,Location:d.location};SC.forEach(s=>{row[s]=d.supplyChain.includes(s)?"x":"";});MATS.forEach(m=>{row[m]=d.materials.includes(m)?"x":"";});return row;}),{columns:CSV_HEADERS});}
-function genTemplate(){return Papa.unparse([{Organisation:"Example Corp",Sector:"Industry",Remit:"SiC power modules",Location:"UK",Equipment:"","Substrate":"",Epiwafer:"","Device design":"x",Manufacturing:"x",Packaging:"x","End user":"",SiC:"x",GaN:"",Ga2O3:"",other:""}],{columns:CSV_HEADERS});}
+const fmtCoord=v=>v==null?"":String(Math.round(v*1e5)/1e5);
+function dataToCSV(data){return Papa.unparse(data.map(d=>{const row={Organisation:d.name,Sector:SECT_LABELS[d.sector]||d.sector,Remit:d.remit,Location:d.location};SC.forEach(s=>{row[s]=d.supplyChain.includes(s)?"x":"";});MATS.forEach(m=>{row[m]=d.materials.includes(m)?"x":"";});const st=d.sites||[];row.City=st.map(s=>s.city).join("; ");row.Postcode=st.map(s=>s.postcode).join("; ");row.Latitude=st.map(s=>fmtCoord(s.lat)).join("; ");row.Longitude=st.map(s=>fmtCoord(s.lng)).join("; ");return row;}),{columns:CSV_HEADERS});}
+function genTemplate(){return Papa.unparse([{Organisation:"Example Corp",Sector:"Industry",Remit:"SiC power modules",Location:"UK",Equipment:"","Substrate":"",Epiwafer:"","Device design":"x",Manufacturing:"x",Packaging:"x","End user":"",SiC:"x",GaN:"",Ga2O3:"",other:"",City:"Bristol; Cardiff",Postcode:"BS8 1TR; CF24 4HQ",Latitude:"",Longitude:""}],{columns:CSV_HEADERS});}
+
+/* ── Automatic location lookup for uploaded data (change 7) ──
+   Fills lat/lng for sites that have none: UK postcodes and UK place names via postcodes.io,
+   US ZIP codes via zippopotam.us, US state names from the table above, anything else via
+   Nominatim (write overseas sites as "City, Country" in the City column). Coordinates are written
+   into the exported CSV, so a dataset only needs looking up once. Runs in the browser after
+   upload; if a service is unreachable the affected organisations are listed beside the map. */
+const GEO_CACHE={};
+const fetchJSON=(url,opts)=>fetch(url,opts).then(r=>r.ok?r.json():Promise.reject(new Error("HTTP "+r.status)));
+async function lookupUKPostcodes(pcs){
+  const need=pcs.filter(p=>!(p in GEO_CACHE));
+  for(let i=0;i<need.length;i+=100){
+    const chunk=need.slice(i,i+100);
+    try{const res=await fetchJSON("https://api.postcodes.io/postcodes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({postcodes:chunk})});
+      (res.result||[]).forEach(r=>{GEO_CACHE[r.query]=r.result?[r.result.latitude,r.result.longitude]:null;});
+    }catch(e){/* leave uncached; retried on the next upload */}
+    /* terminated postcodes still have coordinates */
+    for(const p of chunk){if(GEO_CACHE[p]===null){try{const t=await fetchJSON("https://api.postcodes.io/terminated_postcodes/"+encodeURIComponent(p));if(t.result)GEO_CACHE[p]=[t.result.latitude,t.result.longitude];}catch(e){}}}
+  }
+}
+async function lookupUKPlace(name){
+  const key="place:"+name.toLowerCase();
+  if(key in GEO_CACHE)return GEO_CACHE[key];
+  try{const res=await fetchJSON("https://api.postcodes.io/places?q="+encodeURIComponent(name)+"&limit=5");
+    /* prefer an exact name, then a city over a town over a village; "Newcastle" → Newcastle upon Tyne, not a hamlet */
+    const q=name.toLowerCase();
+    const score=r=>{const n=(r.name_1||"").toLowerCase(),t=r.local_type||"";return(n===q?4:n.startsWith(q)?2:0)+(/city/i.test(t)?3:/town/i.test(t)?2:0);};
+    const pick=(res.result||[]).slice().sort((a,b)=>score(b)-score(a))[0];
+    GEO_CACHE[key]=pick?[pick.latitude,pick.longitude]:null;
+  }catch(e){GEO_CACHE[key]=undefined;}
+  return GEO_CACHE[key];
+}
+async function lookupUSZip(zip){
+  const key="zip:"+zip;
+  if(key in GEO_CACHE)return GEO_CACHE[key];
+  try{const res=await fetchJSON("https://api.zippopotam.us/us/"+zip);const p=res.places&&res.places[0];GEO_CACHE[key]=p?[parseFloat(p.latitude),parseFloat(p.longitude)]:null;}catch(e){GEO_CACHE[key]=undefined;}
+  return GEO_CACHE[key];
+}
+/* Anything else (overseas cities, "City, Country") goes to Nominatim, OpenStreetMap's geocoder.
+   Its usage policy allows light use at no more than one request per second, so calls are queued. */
+let nominatimQueue=Promise.resolve();
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function lookupNominatim(query,iso){
+  const key="nom:"+query.toLowerCase()+(iso?"|"+iso:"");
+  if(key in GEO_CACHE)return Promise.resolve(GEO_CACHE[key]);
+  const run=nominatimQueue.then(async()=>{
+    try{const res=await fetchJSON("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1"+(iso?"&countrycodes="+iso:"")+"&q="+encodeURIComponent(query),{headers:{"Accept-Language":"en"}});
+      const hit=Array.isArray(res)&&res[0];GEO_CACHE[key]=hit?[parseFloat(hit.lat),parseFloat(hit.lon)]:null;
+    }catch(e){GEO_CACHE[key]=undefined;}
+    await sleep(1100);
+    return GEO_CACHE[key];
+  });
+  nominatimQueue=run.catch(()=>{});
+  return run;
+}
+async function geocodeData(data){
+  const out=data.map(d=>({...d,sites:(d.sites||[]).map(s=>({...s}))}));
+  const pending=[];
+  out.forEach(d=>(d.sites||[]).forEach(s=>{if(s.lat==null||s.lng==null)pending.push({d,s});}));
+  if(pending.length===0)return{data:out,total:0,found:0};
+  const ukPcs=[...new Set(pending.filter(x=>isUKPostcode(x.s.postcode)).map(x=>x.s.postcode))];
+  if(ukPcs.length)await lookupUKPostcodes(ukPcs);
+  let found=0;
+  for(const{d,s}of pending){
+    let ll=null;
+    if(isUKPostcode(s.postcode))ll=GEO_CACHE[s.postcode]||null;
+    else if((d.location==="USA"||/^[A-Za-z]{2}\s+\d{5}/.test(s.postcode))&&US_ZIP_RE.test(s.postcode))ll=await lookupUSZip(s.postcode.match(US_ZIP_RE)[1])||null;
+    if(!ll&&(s.city||s.postcode)){
+      const hasCountry=s.city.includes(",");
+      if(s.city&&d.location==="UK"&&!hasCountry)ll=await lookupUKPlace(s.city)||null;
+      else if(s.city&&d.location==="USA"&&US_STATE_CENTRE[s.city])ll=US_STATE_CENTRE[s.city];
+      if(!ll){ /* overseas site, or a UK name postcodes.io does not know: "City, Country" as written; otherwise city and/or postcode plus the organisation's country */
+        const country=d.location==="UK"?"United Kingdom":d.location;
+        const place=[s.city,isUKPostcode(s.postcode)?"":s.postcode].filter(Boolean).join(" ");
+        const known=!hasCountry&&d.location!=="Unknown"&&!!COUNTRY_CENTRE[d.location];
+        const q=known?`${place}, ${country}`:place;
+        /* a UK postcode that postcodes.io rejected is a typo, not a Nominatim query; when the country comes from the
+           Location column the search is restricted to it, so "Munich" under a UK entry is reported rather than guessed */
+        if(place)ll=await lookupNominatim(q,known?COUNTRY_ISO[d.location]:undefined)||null;
+      }
+    }
+    if(ll){s.lat=ll[0];s.lng=ll[1];found++;}
+  }
+  /* Rows flagged by the parser (a postcode that could belong to more than one site by format, e.g.
+     "Farnborough; Birmingham" with one postcode): look the city names up as well and give each
+     postcode to the nearest city. Sites written as "City, Country" keep what they have. */
+  const km=(a,b)=>{const r=Math.PI/180,x=(b[1]-a[1])*r*Math.cos((a[0]+b[0])*r/2),y=(b[0]-a[0])*r;return 6371*Math.sqrt(x*x+y*y);};
+  for(const d of out.filter(d=>d.alignCheck)){
+    delete d.alignCheck;
+    const sites=d.sites||[];
+    const plain=k=>!!sites[k].city&&!sites[k].city.includes(",");
+    const cityLL=[];
+    for(let k=0;k<sites.length;k++){let c=null;if(plain(k)){if(d.location==="UK")c=await lookupUKPlace(sites[k].city)||null;if(!c)c=await lookupNominatim(COUNTRY_CENTRE[d.location]?`${sites[k].city}, ${d.location==="UK"?"United Kingdom":d.location}`:sites[k].city,COUNTRY_ISO[d.location])||null;}cityLL.push(c);}
+    const movable=sites.map((x,k)=>k).filter(k=>plain(k)&&sites[k].postcode&&sites[k].lat!=null);
+    if(movable.length===0)continue;
+    const pcs=movable.map(k=>({pc:sites[k].postcode,ll:[sites[k].lat,sites[k].lng],from:k}));
+    movable.forEach(k=>{sites[k].postcode="";sites[k].lat=cityLL[k]?cityLL[k][0]:null;sites[k].lng=cityLL[k]?cityLL[k][1]:null;});
+    const used=new Set();
+    const place=(k,p)=>{sites[k].postcode=p.pc;sites[k].lat=p.ll[0];sites[k].lng=p.ll[1];used.add(k);};
+    for(const p of pcs){let best=-1,bestKm=Infinity;sites.forEach((x,k)=>{if(used.has(k)||!plain(k)||!cityLL[k])return;const dist=km(p.ll,cityLL[k]);if(dist<bestKm){bestKm=dist;best=k;}});if(best>=0)place(best,p);else p.left=true;}
+    for(const p of pcs.filter(p=>p.left)){const k=!used.has(p.from)?p.from:sites.findIndex((x,i)=>plain(i)&&!used.has(i));if(k>=0)place(k,p);}
+  }
+  return{data:out,total:pending.length,found};
+}
+/* Groups the current rows into map points. Pure; used by the Map tab and the tests. */
+function buildMapPoints(rows){
+  const byKey={};const overseas={};const ukNoCity=[],unknown=[],unlocated=[];
+  rows.forEach(d=>{
+    const located=(d.sites||[]).filter(s=>s.lat!=null&&s.lng!=null);
+    (d.sites||[]).filter(s=>(s.lat==null||s.lng==null)&&(s.city||s.postcode)).forEach(s=>unlocated.push({d,site:s}));
+    if(located.length){
+      located.forEach(s=>{const key=s.lat.toFixed(4)+","+s.lng.toFixed(4);
+        if(!byKey[key])byKey[key]={key,lat:s.lat,lng:s.lng,label:s.city||s.postcode||d.location,members:[],country:d.location};
+        const pt=byKey[key];if(!pt.members.some(m=>m.d===d))pt.members.push({d,site:s});
+        if(!pt.label&&(s.city||s.postcode))pt.label=s.city||s.postcode;
+      });
+    }else if(d.location==="UK"||/\bUK\b/.test(d.location))ukNoCity.push(d); /* "research in UK" counts as UK here */
+    else if(d.location==="Unknown"||!COUNTRY_CENTRE[d.location])unknown.push(d);
+    else{if(!overseas[d.location])overseas[d.location]={key:"country:"+d.location,lat:COUNTRY_CENTRE[d.location][0],lng:COUNTRY_CENTRE[d.location][1],label:d.location,members:[],country:d.location,hollow:true};overseas[d.location].members.push({d,site:null});}
+  });
+  const points=[...Object.values(byKey),...Object.values(overseas)];
+  points.forEach(p=>{const secs=[...new Set(p.members.map(m=>m.d.sector))];p.sector=secs.length===1?secs[0]:"mixed";p.count=p.members.length;});
+  points.sort((a,b)=>(a.hollow?1:0)-(b.hollow?1:0)||b.count-a.count||String(a.label).localeCompare(String(b.label))); /* real places first, country-only placeholders last */
+  return{points,ukNoCity,unknown,unlocated};
+}
 /* ── Change ②: "Ecosystem at a Glance" computed from the loaded dataset ──
    Runs on the full dataset (not the filtered view), so cards update when a new
    CSV is uploaded but stay fixed while the user is filtering. */
@@ -218,7 +421,7 @@ const markGuideSeen=()=>{try{sessionStorage.setItem(SEEN_KEY,"1");}catch(e){}};
    match  : d => boolean, membership predicate
    useAll : true when the clicked figure was computed from the full dataset (everything on
             the Overview tab), so the list ignores the current filters */
-const KIND_CAP={cell:"Organisations behind this cell",bar:"Organisations behind this bar",card:"Organisations behind this card"};
+const KIND_CAP={cell:"Organisations behind this cell",bar:"Organisations behind this bar",card:"Organisations behind this card",pin:"Organisations at this location",list:"Organisations in this list"};
 function OrgPopup({popup,filtered,DATA,sectF,matF,scF,search,onClose,onOpenOrg}){
   useEffect(()=>{const k=ev=>{if(ev.key==="Escape")onClose();};window.addEventListener("keydown",k);return()=>window.removeEventListener("keydown",k);},[onClose]);
   const base=popup.useAll?DATA:filtered;
@@ -230,7 +433,7 @@ function OrgPopup({popup,filtered,DATA,sectF,matF,scF,search,onClose,onOpenOrg})
   const isCell=popup.kind==="cell";
   const stop=ev=>ev.stopPropagation();
   return(
-    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(10,30,40,0.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:24}}>
+    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(10,30,40,0.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:2000,padding:24}}>
       <div onClick={stop} style={{background:C.card,borderRadius:14,boxShadow:"0 12px 40px rgba(0,40,60,0.25)",width:"100%",maxWidth:640,maxHeight:"85vh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
         <div style={{padding:"18px 22px 12px",borderBottom:`1px solid ${C.bl}`,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
           <div>
@@ -251,7 +454,7 @@ function OrgPopup({popup,filtered,DATA,sectF,matF,scF,search,onClose,onOpenOrg})
           ):rows.map((d,i)=>(
             <div key={i} onClick={()=>onOpenOrg(d)} title="Open in Explorer" style={{display:"flex",alignItems:"center",gap:12,padding:"10px 8px",borderBottom:i<rows.length-1?`1px solid ${C.bl}`:"none",cursor:"pointer",borderRadius:6}} onMouseEnter={ev=>{ev.currentTarget.style.background=C.tg;}} onMouseLeave={ev=>{ev.currentTarget.style.background="transparent";}}>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:13,fontWeight:600,color:C.tx}}>{d.name}<span style={{fontSize:11,color:C.tm,fontWeight:400,marginLeft:8}}>{d.location==="Unknown"?"":d.location}</span></div>
+                <div style={{fontSize:13,fontWeight:600,color:C.tx}}>{d.name}<span style={{fontSize:11,color:C.tm,fontWeight:400,marginLeft:8}}>{placeText(d)}</span></div>
                 <div style={{fontSize:11,color:C.ts,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.remit||"—"}</div>
               </div>
               <Chip color={C[d.sector]} filled sm>{SECT_LABELS[d.sector]||d.sector}</Chip>
@@ -262,6 +465,55 @@ function OrgPopup({popup,filtered,DATA,sectF,matF,scF,search,onClose,onOpenOrg})
       </div>
     </div>
   );
+}
+
+/* "UK · Warrington WA4 4BT; Stone" for detail cards, table and pop-up rows */
+const siteText=d=>(d.sites||[]).map(s=>[s.city,s.postcode].filter(Boolean).join(" ")).filter(Boolean).join("; ");
+const cityText=d=>[...new Set((d.sites||[]).map(s=>s.city||s.postcode).filter(Boolean))].join("; ");
+const placeText=(d,full)=>{const st=full?siteText(d):cityText(d);const loc=d.location==="Unknown"?"":d.location;return loc&&st?loc+" · "+st:loc||st;};
+
+/* ── Map (change 7) ──
+   Leaflet map with OpenStreetMap tiles. Defined outside App (a real component with hooks) and
+   rendered by the Map tab; the tab function itself stays hook-free like the other tabs.
+   points come from buildMapPoints(); each marker opens the organisation pop-up via onPoint. */
+const UK_BOUNDS=[[49.8,-8.7],[59.0,2.0]];
+const pinColor=p=>p.sector==="mixed"?C.tx:C[p.sector];
+const escHtml=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function LeafletMap({points,view,onPoint}){
+  const boxRef=useRef(null),mapRef=useRef(null),layerRef=useRef(null);
+  const onPointRef=useRef(onPoint);onPointRef.current=onPoint;
+  const hasL=typeof window!=="undefined"&&typeof window.L!=="undefined";
+  useEffect(()=>{
+    if(!hasL||!boxRef.current)return;
+    const map=L.map(boxRef.current,{worldCopyJump:true,minZoom:2,scrollWheelZoom:false});
+    /* tile.openstreetmap.org requires a valid Referer: tiles load from the GitHub Pages site or a local web server, but not from a file opened directly from disk (file://) */
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,referrerPolicy:"strict-origin-when-cross-origin",attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
+    map.fitBounds(UK_BOUNDS);
+    map.on("focus",()=>map.scrollWheelZoom.enable());map.on("blur",()=>map.scrollWheelZoom.disable());
+    mapRef.current=map;layerRef.current=L.layerGroup().addTo(map);
+    return()=>{map.remove();mapRef.current=null;layerRef.current=null;};
+  },[hasL]);
+  useEffect(()=>{
+    const map=mapRef.current,layer=layerRef.current;if(!map||!layer)return;
+    layer.clearLayers();
+    points.forEach(p=>{
+      const size=p.count>=20?38:p.count>=10?34:p.count>=5?30:p.count>1?26:22;
+      const col=pinColor(p);
+      const html=`<div class="rw-pin${p.hollow?" hollow":""}" style="width:${size}px;height:${size}px;background:${col};color:${p.hollow?col:"#fff"}">${p.count>1?p.count:""}</div>`;
+      const icon=L.divIcon({html,className:"",iconSize:[size,size],iconAnchor:[size/2,size/2]});
+      const m=L.marker([p.lat,p.lng],{icon,title:""}).addTo(layer);
+      const tip=`${escHtml(p.label)}: ${p.count} ${p.count===1?"organisation":"organisations"}`+(p.hollow?" (country only, no city yet)":"");
+      m.bindTooltip(tip,{direction:"top",offset:[0,-size/2],className:"rw-tip"});
+      m.on("click",()=>onPointRef.current(p));
+    });
+  },[points]);
+  useEffect(()=>{ /* re-fit on UK / World only, so filtering does not undo the user's own zoom */
+    const map=mapRef.current;if(!map)return;
+    if(view==="uk"||points.length===0){map.fitBounds(UK_BOUNDS);return;}
+    map.fitBounds(L.latLngBounds(points.map(p=>[p.lat,p.lng])).pad(0.15),{maxZoom:6});
+  },[view]);
+  if(!hasL)return <div style={{height:520,display:"flex",alignItems:"center",justifyContent:"center",color:C.tm,fontSize:13,textAlign:"center",padding:24}}>The map library could not be loaded (no connection to unpkg.com). The locations are still listed below.</div>;
+  return <div ref={boxRef} style={{height:520,borderRadius:10,overflow:"hidden",border:`1px solid ${C.bl}`}}/>;
 }
 
 /* ── Main App ── */
@@ -279,6 +531,8 @@ function App(){
   const fileRef=useRef(null);
   const[guideStep,setGuideStep]=useState(0);
   const[popup,setPopup]=useState(null);
+  const[mapView,setMapView]=useState("uk");
+  const uploadSeq=useRef(0); /* ignores location look-ups that finish after a newer upload or Reset */
   useEffect(()=>{if(tab==="gaps"&&!guideSeenBefore()){markGuideSeen();setGuideStep(1);}},[tab]);
   const goTab=id=>{setTab(id);setPopup(null);};
   const guideAdvance=from=>{if(guideStep===from)setGuideStep(from<GUIDE_STEPS.length?from+1:0);};
@@ -291,15 +545,22 @@ function App(){
   const materialPopup=m=>({kind:"bar",title:<span style={{color:C[m]}}>{ML[m]}</span>,what:`works with ${MS[m]}`,match:d=>d.materials.includes(m)});
   const locationPopup=loc=>({kind:"bar",title:loc==="Unknown"?"Location unspecified":loc,what:loc==="Unknown"?"has an unspecified location":`is located in ${loc}`,match:d=>d.location===loc||(loc==="Unknown"&&d.location==="Unspecified")});
   const statPopup=(label,match,what)=>({kind:"card",title:label,what,match,useAll:true});
+  /* Map (change 7): a marker's members are fixed when it is built, so match by identity */
+  const pinPopup=p=>{const set=new Set(p.members.map(m=>m.d));return{kind:"pin",title:p.hollow?<span>{p.label}<span style={{fontSize:12,color:C.tm,fontWeight:400,marginLeft:8}}>country only</span></span>:p.label,what:p.hollow?`is recorded in ${p.label} without a city`:`has a site at ${p.label}`,match:d=>set.has(d)};};
+  const unplacedPopup=(title,list,what)=>{const set=new Set(list);return{kind:"list",title,what,match:d=>set.has(d)};};
   const openOrg=d=>{setPopup(null);setSelOrg(d);setTab("explorer");window.scrollTo({top:0,behavior:"smooth"});};
 
   const handleCSV=useCallback((file)=>{
     if(!file)return;const reader=new FileReader();
-    reader.onload=(ev)=>{try{const parsed=parseCSVToData(ev.target.result);if(parsed.length===0)throw new Error("No valid rows");setDATA(parsed);setDataSource(file.name);setUploadMsg({type:"success",text:`Loaded ${parsed.length} organisations from ${file.name}`});setTab("overview");setSectF(null);setMatF(null);setScF(null);setSearch("");setSelOrg(null);}catch(err){setUploadMsg({type:"error",text:"Error: "+err.message});}};
+    reader.onload=(ev)=>{try{const parsed=parseCSVToData(ev.target.result);if(parsed.length===0)throw new Error("No valid rows");setDATA(parsed);setDataSource(file.name);setUploadMsg({type:"success",text:`Loaded ${parsed.length} organisations from ${file.name}`});setTab("overview");setSectF(null);setMatF(null);setScF(null);setSearch("");setSelOrg(null);
+      /* change 7: look up coordinates for sites that have none, then swap the data in once */
+      const seq=++uploadSeq.current;
+      geocodeData(parsed).then(res=>{if(seq!==uploadSeq.current||res.total===0)return;setDATA(res.data);const missing=res.total-res.found;setUploadMsg({type:"success",text:`Loaded ${parsed.length} organisations from ${file.name}. Located ${res.found} of ${res.total} ${res.total===1?"site":"sites"} automatically`+(missing?`; ${missing} could not be found and ${missing===1?"is":"are"} listed beside the map.`:".")});}).catch(()=>{});
+    }catch(err){setUploadMsg({type:"error",text:"Error: "+err.message});}};
     reader.readAsText(file);
   },[]);
   const handleDrop=useCallback((ev)=>{ev.preventDefault();setDragOver(false);const file=ev.dataTransfer?.files?.[0];if(file&&file.name.endsWith(".csv"))handleCSV(file);else setUploadMsg({type:"error",text:"Please drop a .csv file"});},[handleCSV]);
-  const resetData=()=>{setDATA(DEFAULT_DATA);setDataSource("default");setUploadMsg({type:"success",text:"Reset to built-in dataset"});setSectF(null);setMatF(null);setScF(null);setSearch("");setSelOrg(null);};
+  const resetData=()=>{uploadSeq.current++;setDATA(DEFAULT_DATA);setDataSource("default");setUploadMsg({type:"success",text:"Reset to built-in dataset"});setSectF(null);setMatF(null);setScF(null);setSearch("");setSelOrg(null);};
 
   const filtered=useMemo(()=>DATA.filter(d=>{
     if(search&&!d.name.toLowerCase().includes(search.toLowerCase())&&!d.remit.toLowerCase().includes(search.toLowerCase()))return false;
@@ -322,6 +583,7 @@ function App(){
   })),[DATA]);
 
   const insights=useMemo(()=>computeInsights(DATA),[DATA]);
+  const mapData=useMemo(()=>buildMapPoints(filtered),[filtered]); /* change 7: map follows the filters like the other tabs */
   const matBar=useMemo(()=>MATS.map(m=>({key:m,name:MS[m],full:ML[m],count:DATA.filter(d=>d.materials.includes(m)).length,fill:C[m]})),[DATA]);
   const hasF=sectF||matF||scF||search;
   const clearF=()=>{setSectF(null);setMatF(null);setScF(null);setSearch("");};
@@ -409,7 +671,7 @@ function App(){
               <div style={{fontSize:18,fontWeight:700,color:C.tx}}>{selOrg.name}</div>
               <div style={{display:"flex",gap:6,marginTop:6,flexWrap:"wrap",alignItems:"center"}}>
                 <Chip color={C[selOrg.sector]} filled>{SECT_LABELS[selOrg.sector]||selOrg.sector}</Chip>
-                {selOrg.location!=="Unknown"&&<span style={{fontSize:11,color:C.ts}}>📍 {selOrg.location}</span>}
+                {placeText(selOrg,true)&&<span style={{fontSize:11,color:C.ts}}>📍 {placeText(selOrg,true)}</span>}
               </div>
             </div>
             <button onClick={()=>setSelOrg(null)} style={{background:"transparent",border:"none",color:C.tm,cursor:"pointer",fontSize:18,padding:4}}>✕</button>
@@ -433,7 +695,7 @@ function App(){
               <tr key={i} onClick={()=>setSelOrg(d)} style={{cursor:"pointer",borderBottom:`1px solid ${C.bl}`}} onMouseEnter={ev=>{ev.currentTarget.style.background=C.tg;}} onMouseLeave={ev=>{ev.currentTarget.style.background="transparent";}}>
                 <td style={{padding:"10px 14px",color:C.tx,fontWeight:600}}>{d.name}</td>
                 <td style={{padding:"10px 14px"}}><Chip color={C[d.sector]} sm filled>{SECT_LABELS[d.sector]||d.sector}</Chip></td>
-                <td style={{padding:"10px 14px",color:C.ts}}>{d.location==="Unknown"?"—":d.location}</td>
+                <td style={{padding:"10px 14px",color:C.ts,maxWidth:220}}>{d.location==="Unknown"?"—":d.location}{cityText(d)&&<span style={{color:C.tm,fontSize:11}}> · {cityText(d)}</span>}</td>
                 <td style={{padding:"10px 14px",color:C.ts,maxWidth:260,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.remit||"—"}</td>
                 <td style={{padding:"10px 14px"}}><div style={{display:"flex",gap:3,flexWrap:"wrap"}}>{d.supplyChain.slice(0,2).map(s=><Chip key={s} color={C.teal} sm>{s}</Chip>)}{d.supplyChain.length>2&&<span style={{fontSize:10,color:C.tm}}>+{d.supplyChain.length-2}</span>}</div></td>
                 <td style={{padding:"10px 14px"}}><div style={{display:"flex",gap:4}}>{d.materials.map(m=><span key={m} style={{width:10,height:10,borderRadius:"50%",background:C[m],display:"inline-block",border:"2px solid #fff",boxShadow:`0 0 0 1px ${C[m]}44`}} title={MS[m]}/>)}</div></td>
@@ -532,6 +794,59 @@ function App(){
     );
   };
 
+  /* ── Map tab (change 7) ── hook-free like the other tabs; LeafletMap holds the hooks */
+  const MapTab=()=>{
+    const{points,ukNoCity,unknown,unlocated}=mapData;
+    const unlocatedOrgs=[...new Set(unlocated.map(x=>x.d))];
+    const solid=points.filter(p=>!p.hollow),hollow=points.filter(p=>p.hollow);
+    const plotted=new Set();solid.forEach(p=>p.members.forEach(m=>plotted.add(m.d)));
+    /* the list groups markers by place name (several postcodes in one city → one row) */
+    const places={};points.forEach(p=>{const k=(p.hollow?"country:":"")+p.label+"|"+p.country;if(!places[k])places[k]={key:k,label:p.label,country:p.country,hollow:p.hollow,sector:p.sector,members:[]};const pl=places[k];p.members.forEach(m=>{if(!pl.members.some(x=>x.d===m.d))pl.members.push(m);});if(pl.sector!==p.sector)pl.sector="mixed";});
+    const placeList=Object.values(places).map(pl=>({...pl,count:pl.members.length})).sort((a,b)=>(a.hollow?1:0)-(b.hollow?1:0)||b.count-a.count||a.label.localeCompare(b.label));
+    const byCountry=new Set();hollow.forEach(p=>p.members.forEach(m=>byCountry.add(m.d)));
+    const toggle=(id,label)=><button key={id} onClick={()=>setMapView(id)} style={{background:mapView===id?C.teal:C.card,color:mapView===id?"#fff":C.teal,border:`1.5px solid ${C.teal}`,borderRadius:8,padding:"5px 14px",fontSize:12,fontWeight:600,cursor:"pointer"}}>{label}</button>;
+    const legend=[["Industry",C.Industry],["Academic",C.Academic],["Supporting Bodies",C.Other],["Mixed",C.tx]];
+    const row=(key,label,sub,count,color,onClick,dashed)=>(
+      <div key={key} onClick={onClick} title="Click to list the organisations" style={{display:"flex",alignItems:"center",gap:10,padding:"7px 10px",borderRadius:8,cursor:"pointer",borderBottom:`1px solid ${C.bl}`}} onMouseEnter={ev=>{ev.currentTarget.style.background=C.tg;}} onMouseLeave={ev=>{ev.currentTarget.style.background="transparent";}}>
+        <span style={{width:12,height:12,borderRadius:"50%",flexShrink:0,background:dashed?"transparent":color,border:dashed?`2px dashed ${color}`:"none"}}/>
+        <span style={{flex:1,fontSize:12,color:C.tx,fontWeight:600,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}{sub&&<span style={{color:C.tm,fontWeight:400,marginLeft:6}}>{sub}</span>}</span>
+        <span style={{fontSize:13,fontWeight:700,fontFamily:mn,color:C.tx}}>{count}</span>
+      </div>
+    );
+    return(
+      <div>
+        <FilterBar/>
+        <Card style={{marginBottom:18}}>
+          <STitle sub="Each marker is a site; the number shows how many organisations share it. Click a marker to list them. Dashed markers stand for countries where no city has been recorded yet.">Ecosystem Map</STitle>
+          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:12}}>
+            {toggle("uk","UK")}{toggle("world","World")}
+            <span style={{width:1,height:18,background:C.bd,margin:"0 6px"}}/>
+            {legend.map(([l,c])=><span key={l} style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:C.ts}}><span style={{width:10,height:10,borderRadius:"50%",background:c,display:"inline-block"}}/>{l}</span>)}
+            <span style={{marginLeft:"auto",fontSize:12,color:C.tm}}><strong style={{color:C.teal,fontFamily:mn}}>{plotted.size}</strong> organisations at <strong style={{color:C.teal,fontFamily:mn}}>{solid.length}</strong> {solid.length===1?"place":"places"}{byCountry.size>0&&<span>; <strong style={{color:C.ts,fontFamily:mn}}>{byCountry.size}</strong> by country only</span>}</span>
+          </div>
+          <LeafletMap points={points} view={mapView} onPoint={p=>setPopup(pinPopup(p))}/>
+        </Card>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          <Card><STitle sub="Every place on the map for the current selection, grouped by city, most organisations first. Click a row to list them.">Locations</STitle>
+            <div style={{maxHeight:360,overflowY:"auto"}}>
+              {placeList.length===0?<p style={{color:C.tm,fontSize:12,margin:0}}>No located organisation in the current selection.</p>:placeList.map(p=>row(p.key,p.label,p.hollow?"country only":(p.country&&p.country!=="UK"&&!p.label.includes(",")?p.country:null),p.count,pinColor(p),()=>setPopup(pinPopup(p)),p.hollow))}
+            </div>
+          </Card>
+          <Card><STitle sub="Organisations with no city or postcode yet, and sites whose city or postcode could not be looked up (an overseas city, or a postcode that does not exist).">Not Yet on the Map</STitle>
+            {ukNoCity.length===0&&unknown.length===0&&unlocated.length===0?<p style={{color:C.tm,fontSize:12,margin:0}}>Every organisation in the current selection is on the map.</p>:(
+              <div>
+                {ukNoCity.length>0&&row("uknocity","UK, city not recorded",null,ukNoCity.length,C.teal,()=>setPopup(unplacedPopup("UK, city not recorded",ukNoCity,"is UK-based without a recorded city")),true)}
+                {unknown.length>0&&row("unknown","Location not specified",null,unknown.length,C.tm,()=>setPopup(unplacedPopup("Location not specified",unknown,"has an unspecified location")),true)}
+                {unlocated.length>0&&row("unlocated","Sites that could not be located",unlocated.map(x=>x.site.city||x.site.postcode).slice(0,4).join(", ")+(unlocated.length>4?" …":""),unlocated.length,C.amb,()=>setPopup(unplacedPopup("Sites that could not be located",unlocatedOrgs,"has a site that could not be located")),true)}
+              </div>
+            )}
+            <p style={{fontSize:11,color:C.tm,margin:"12px 0 0",lineHeight:1.6}}>Coordinates are looked up automatically when a CSV is uploaded (UK postcodes and place names via postcodes.io, US ZIP codes via zippopotam.us, other places via OpenStreetMap Nominatim) and saved in the exported CSV, so each site is looked up once.</p>
+          </Card>
+        </div>
+      </div>
+    );
+  };
+
   const DataTab=()=>(
     <div>
       <Card style={{marginBottom:18,background:dataSource==="default"?C.tg:C.gb,borderLeft:`4px solid ${dataSource==="default"?C.teal:C.green}`}}>
@@ -558,7 +873,7 @@ function App(){
           <STitle sub="Download for updating or sharing">Download Options</STitle>
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             <button onClick={()=>dlFile(genTemplate(),"rewire_template.csv")} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 18px",background:C.tg,border:`1.5px solid ${C.tb}`,borderRadius:10,cursor:"pointer",textAlign:"left"}}>
-              <span style={{fontSize:28}}>📋</span><div><div style={{fontSize:13,fontWeight:700,color:C.teal}}>Download Blank Template</div><div style={{fontSize:11,color:C.ts}}>Empty CSV with example row</div></div>
+              <span style={{fontSize:28}}>📋</span><div><div style={{fontSize:13,fontWeight:700,color:C.teal}}>Download Blank Template</div><div style={{fontSize:11,color:C.ts}}>Empty CSV with example row (City and Postcode included)</div></div>
             </button>
             <button onClick={()=>dlFile(dataToCSV(DATA),"rewire_ecosystem_data.csv")} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 18px",background:C.tg,border:`1.5px solid ${C.tb}`,borderRadius:10,cursor:"pointer",textAlign:"left"}}>
               <span style={{fontSize:28}}>💾</span><div><div style={{fontSize:13,fontWeight:700,color:C.teal}}>Export Current Data</div><div style={{fontSize:11,color:C.ts}}>All {DATA.length} organisations as CSV</div></div>
@@ -591,6 +906,7 @@ function App(){
         {tab==="explorer"&&Explorer()}
         {tab==="gaps"&&Gaps()}
         {tab==="chain"&&ChainTab()}
+        {tab==="map"&&MapTab()}
         {tab==="data"&&DataTab()}
       </div>
       {popup&&<OrgPopup popup={popup} filtered={filtered} DATA={DATA} sectF={sectF} matF={matF} scF={scF} search={search} onClose={closePopup} onOpenOrg={openOrg}/>}
